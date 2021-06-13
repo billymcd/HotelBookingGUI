@@ -5,8 +5,7 @@
  */
 package hotelbooking;
 
-import java.io.Serializable;
-import java.time.LocalDate;
+import java.sql.Date;
 
 /**
  *
@@ -15,7 +14,7 @@ import java.time.LocalDate;
 public class RestaurantBooking extends Booking { //**********
     private final int time;
     
-    public RestaurantBooking(int bookingNo, int customerNo, LocalDate date, int time) // Constructor initialises variables 
+    public RestaurantBooking(int bookingNo, int customerNo, Date date, int time) // Constructor initialises variables 
     {
         super(bookingNo, customerNo, date); // Booking created according to booking constructor
         this.time=time; // Restaurant booking time set as corresponding input parameter

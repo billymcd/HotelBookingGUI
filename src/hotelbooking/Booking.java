@@ -5,30 +5,29 @@
  */
 package hotelbooking;
 
-import java.io.Serializable;
-import java.time.LocalDate;
+import java.sql.Date;
 
 /**
  *
  * @author Billy McCarthy-Dowd
  */
-public abstract class Booking implements Serializable {
+public abstract class Booking {
     protected int bookingNo, customerNo;
-    protected LocalDate date;
+    protected Date date;
     
-    public Booking(int bookingNo, int customerNo, LocalDate date) // Constructor initialises variables
+    public Booking(int bookingNo, int customerNo, Date date) // Constructor initialises variables
     {
         this.bookingNo=bookingNo;
         this.customerNo=customerNo;
         this.date=date;
     }
     
-    public void setDate(LocalDate date) // Function allows user to change protected variable
+    public void setDate(Date date) // Function allows user to change protected variable
     {
         this.date=date; 
     }
     
-    public LocalDate getDate() // Function allows access to protected variable
+    public Date getDate() // Function allows access to protected variable
     {
         return date;
     }

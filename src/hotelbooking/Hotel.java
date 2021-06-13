@@ -5,7 +5,12 @@
  */
 package hotelbooking;
 
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Scanner;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -20,8 +25,9 @@ public class Hotel {
     private final Set<Customer> customerList;
     private final Set<RoomBooking> roomBookList;
     private final Set<RestaurantBooking> restBookList;
+    private Connection conn;
     
-    public Hotel(String name, String location, int rating) // Constructor initialises variables
+    public Hotel(String name, String location, int rating, Connection conn)
     {
         this.roomBookList = new HashSet();
         this.customerList = new HashSet();
@@ -31,39 +37,58 @@ public class Hotel {
         this.name=name;
         this.location=location;
         this.rating=rating;
+        this.conn=conn;
     }
     
-    public void createRoom(int type) // Creates a new room of the specified type
+    public void createRoom(int type)
     {
+        PreparedStatement statement;
         int roomType=type;
         int roomNo=0;
-        if(roomList.isEmpty()) // If no rooms in the room list hashset, next room number is 1
+        Room room=null;
+        String rType="";
+        if(roomList.isEmpty())
             roomNo=1;
         else
-            roomNo=roomList.size()+1; // If rooms in the room list hashset, next room number is 1 more than last
-        switch(roomType)
-        {
-            case 1: // Create new single room
-                roomList.add(new Single(roomNo));
-                break;
-            case 2: // Create new double room
-                roomList.add(new Double(roomNo));
-                break;
-            case 3: // Create new suite room
-                roomList.add(new Suite(roomNo));
-                break;
-            default: // If none of the valid room choices are selected, print message
-                System.out.println("Invalid selection.");
-                break;
+            roomNo=roomList.size()+1;
+        try {
+            statement=conn.prepareStatement("INSERT INTO ROOMS VALUES ("+roomNo+", ?, false, ?)");
+            switch(roomType)
+            {
+                case 1:
+                    room=new Single(roomNo);
+                    roomList.add(room);
+                    rType="single";
+                    break;
+                case 2:
+                    room=new Double(roomNo);
+                    roomList.add(room);
+                    rType="double";
+                    break;
+                case 3:
+                    room=new Suite(roomNo);
+                    roomList.add(room);
+                    rType="suite";
+                    break;
+                default:
+                    System.out.println("Invalid selection.");
+                    break;
+            }
+            statement.setString(1, rType);
+            statement.setInt(2, room.getPrice());
+            statement.executeUpdate();
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
         }
     }
     
-    public Set<Room> getRoomList() // Function allows access to private variable
+    public Set<Room> getRoomList()
     {
         return roomList;
     }
     
-    public Customer createCustomer() // Creates a new customer
+    public Customer createCustomer()
     {
         int accountNo=0;
         String newPhone="";
@@ -71,42 +96,43 @@ public class Hotel {
         boolean validEmail=false;
         boolean validPhoneNumber=false;
         
-        System.out.print("Please enter name: "); // Prompt user to input name
-        String newName=scan.next(); // Assign the next scanner token to variable for name
+        System.out.print("Please enter name: ");
+        String newName=scan.next();
         
         while (newEmail.equals(""))
         {
-            System.out.print("Please enter email address: "); // Prompt user to input email address
-            newEmail=scan.next(); // Assign the next scanner token to variable for email
+            System.out.print("Please enter email address: ");
+            newEmail=scan.next();
             
-            validEmail = emailIsValid(newEmail); // Check if email address is valid
+            validEmail = emailIsValid(newEmail);
             
-            if (validEmail == false) // If email not valid, enter sequence
+            if (validEmail == false)
             {
                 newEmail ="";
-                System.out.println("Not a valid email address, please try again."); // If email is not valid, prompt user to input email again
+                System.out.println("Not a valid email address, please try again.");
             }
         }
         
         while (newPhone.equals(""))
         {
-            System.out.print("Please enter phone number: "); // Prompt user to input phone number
-            newPhone=scan.next(); // Assign the next scanner token to variable for phone number
+            System.out.print("Please enter phone number: ");
+            newPhone=scan.next();
             
-            validPhoneNumber = phoneNumberIsValid(newPhone); // Check if phone number is valid
+            validPhoneNumber = phoneNumberIsValid(newPhone);
             
-            if (validPhoneNumber == false) // If phone number not valid, enter sequence
+            if (validPhoneNumber == false)
             {
                 newPhone ="";
-                System.out.println("Not a valid phone number, please try again."); // If phone number is not valid, prompt user to input phone number again
+                System.out.println("Not a valid phone number, please try again.");
             }
         }
+        long phone=Long.parseLong(newPhone);
         
         if(customerList.isEmpty()) // If no customers in the customer list hashset, next customer account number is 1
             accountNo=1;
         else
             accountNo=customerList.size()+1; // If customers in the customer list hashset, next customer number is 1 more than last
-        Customer cust=new Customer(accountNo, newName, newEmail, newPhone); // Create a new customer based on information
+        Customer cust=new Customer(accountNo, newName, newEmail, phone); // Create a new customer based on information
         int start=customerList.size(); // Check current size of customer list hashset and assign to start variable
         customerList.add(cust); // Add customer to customer list hashset
         int end=customerList.size(); // Check size of customer list hashset and assign to end variable
@@ -126,7 +152,7 @@ public class Hotel {
             roomBookList.add((RoomBooking)newBooking);
         if(newBooking instanceof RestaurantBooking) // Add restaurant booking to restaurant booking hashset
             restBookList.add((RestaurantBooking)newBooking);
-    } // ******** What if it is null?
+    }
     
     public Set<RoomBooking> getRoomBookList() // Function allows access to private variable
     {

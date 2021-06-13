@@ -5,17 +5,16 @@
  */
 package hotelbooking;
 
-import java.io.Serializable;
-
 /**
  *
  * @author Billy McCarthy-Dowd
  */
-public class Customer implements Serializable {
-    private final String name, email, phoneNo;
+public class Customer {
+    private final String name, email;
+    private long phoneNo;
     private final int accountNo;
     
-    public Customer(int accountNo, String name, String email, String phoneNo) // Constructor initialises variables
+    public Customer(int accountNo, String name, String email, long phoneNo) // Constructor initialises variables
     {
         this.accountNo=accountNo;
         this.name=name;
@@ -38,7 +37,7 @@ public class Customer implements Serializable {
         return email;
     }
     
-    public String getPhone() // Function allows access to private variable
+    public long getPhone() // Function allows access to private variable
     {
         return phoneNo;
     }

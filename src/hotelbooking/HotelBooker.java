@@ -5,19 +5,22 @@
  */
 package hotelbooking;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.Date;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.*;
+import java.sql.Statement;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.util.Calendar;
+import java.util.InputMismatchException;
+import java.util.Iterator;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -29,49 +32,32 @@ public class HotelBooker {
     private String response;
     private Room currentRoom;
     private Booking currentBooking;
-    private Connection conn;
+    private Connection conn=null;
 
-    public HotelBooker(String name, String location, int rating) // Constructor initialises variable
+    public HotelBooker(String name, String location, int rating)
     {
-        this.hotel = new Hotel(name, location, rating);
-    }
-    
-    public HotelBooker(String name, String location, int rating, Connection conn) // Constructor initialises variable
-    {
-        this(name, location, rating);
-        this.conn=conn;
+        dbSetup();
+        this.hotel = new Hotel(name, location, rating, conn);
     }
     
     public static void main(String[] args) 
     {
-        Connection conn=null;
-        String url="jdbc:derby://localhost:1527/ PDCHotel; create=true";
-        try {
-            conn=DriverManager.getConnection(url, "vsf2319", "Hotel123");
-        } catch (SQLException ex) {
-            System.out.println("SQLException: "+ex.getMessage());
-        }
-        
-        Scanner scan = new Scanner(System.in); // Initialise new scanner
+        Scanner scan = new Scanner(System.in);
         int running=1;
         int customerLoaded=0;
-        HotelBooker hotBook=new HotelBooker("PDC Hotel", "Auckland", 5, conn);
-        if(!hotBook.loadHotel()) //*****
-        {
-            System.out.println("Initialising first time setup.");
-            hotBook.setupRooms(50, 25, 10);
-        }
+        HotelBooker hotBook=new HotelBooker("PDC Hotel", "Auckland", 5);
+        hotBook.loadHotel();
         
-        while(running==1) // While program running //*****
+        while(running==1)
         {
             hotBook.currentCustomer=null;
             customerLoaded=0;
-            System.out.println("Welcome to PDC Hotel!"); // Welcome user
+            System.out.println("Welcome to PDC Hotel!");
             System.out.println("");
             
-            while(customerLoaded==0) // While customer not loaded, enter sequence
+            while(customerLoaded==0)
                 customerLoaded=hotBook.checkCustomer();
-            hotBook.response=null; // Reset response
+            hotBook.response=null; // Response variable is reused, so clearing it
             
             int selection=0;
             while(selection==0)
@@ -82,15 +68,15 @@ public class HotelBooker {
                 System.out.println("(3) Enquire on an existing booking");
                 System.out.println("Or enter any other number to return to the main menu.");
                 try{
-                    selection=scan.nextInt(); // Scan user input
+                    selection=scan.nextInt();
                 }catch(InputMismatchException e){
-                    System.out.println("Invalid response, please try again."); // If user input not a whole number, prompt user to input again
+                    System.out.println("Invalid response, please try again.");
                     scan.next();
                 }
                 System.out.println("");
             }
             
-            while(selection==1&&customerLoaded==1) // While booking type is unchanged and customer loaded, enter sequence //****
+            while(selection==1&&customerLoaded==1)
                 selection=hotBook.roomBookingDetails();
             while(selection==2&&customerLoaded==1)
                 selection=hotBook.restaurantBookingDetails();
@@ -104,26 +90,25 @@ public class HotelBooker {
                 System.out.println("(3) Both");
                 System.out.println("(4) Return to main menu");
                 try{
-                    enquiry=scan.nextInt(); // Scan user input
+                    enquiry=scan.nextInt();
                 }catch(InputMismatchException e){
-                    System.out.println("Invalid response, please try again.\n"); // If user input not a whole number, prompt user to input again
+                    System.out.println("Invalid response, please try again.\n");
                     scan.next();
                 }
                 System.out.println("");
                 selection=hotBook.bookingEnquiry(enquiry, custNo);
             }
         }
-        hotBook.saveHotel();
     }
-    
-    public void setupRooms(int singles, int doubles, int suites) // Depending of number of each type of room specified, create new rooms
+    //Used to create new rooms in bulk, primarily on first time running
+    public void setupRooms(int singles, int doubles, int suites)
     {
-        for(int i=0;i<singles;i++) // Create new single rooms
-            this.hotel.createRoom(1);
-        for(int i=0;i<doubles;i++) // Create new double rooms
-            this.hotel.createRoom(2);
-        for(int i=0;i<suites;i++) // Create new suite rooms
-            this.hotel.createRoom(3);
+        for(int i=0;i<singles;i++)
+            hotel.createRoom(1);
+        for(int i=0;i<doubles;i++)
+            hotel.createRoom(2);
+        for(int i=0;i<suites;i++)
+            hotel.createRoom(3);
     }
     
     public int checkCustomer()
@@ -136,17 +121,16 @@ public class HotelBooker {
         switch(response)
         {
             case "y": // If user indicates they have booked before
-                this.loadCustomer();
+                loadCustomer();
                 if(currentCustomer!=null) // If current customer loaded, set variable to match
                     customerLoaded=1;
                 break;
             case "n": // If user indicates they haven't booked before
-                currentCustomer=this.newCustomer(); // Create new customer and set as current customer
+                currentCustomer=newCustomer(); // Create new customer and set as current customer
                 if(currentCustomer!=null) // If current customer loaded, set variable to match
                     customerLoaded=1;
                 break;
             case "q": // If user indicates they want to quit
-                this.saveHotel();
                 System.exit(0);
                 break;
             default:
@@ -161,63 +145,81 @@ public class HotelBooker {
         Scanner scan = new Scanner(System.in);
         Customer cust=null;
         int custCheck=0;
-        while(custCheck==0) // Enter sequence to create new customer
+        //Continually loop until either a customer is created, or user cancels
+        while(custCheck==0)
         {
             System.out.println("Create new customer account:");
             System.out.println("----------------------------");
-            cust=this.hotel.createCustomer(); // Create a new customer
-            if(cust==null) // If new customer instance unchanged
+            cust=hotel.createCustomer();
+            if(cust==null)
             {   
                 System.out.println("");
                 System.out.print("Account creation failed, enter Y to try again,"
                         + " anything else to cancel: ");
-                String cResponse=scan.next().toLowerCase(); // Read user input
+                String cResponse=scan.next().toLowerCase();
                 if(!cResponse.equals("y"))
-                    custCheck=1; // If user cancels, don't try to create customer account again
+                    custCheck=1;
                 System.out.println("");
             }
             else
             {
+                //Output details if account created successfully
                 System.out.println("");
                 System.out.println("Customer account created!");
                 System.out.println("-------------------------");
-                System.out.println(cust.toString()); // Print customer details
+                System.out.println(cust.toString());
                 System.out.println("");
-                custCheck=1; // Account created, so exit sequence
+                custCheck=1;
+            }
+        }
+        if(cust!=null)
+        {
+            PreparedStatement statement;
+            try {
+                statement=conn.prepareStatement("INSERT INTO CUSTOMERS VALUES (?, ?, ?, ?)");
+                statement.setInt(1, cust.getAccount());
+                statement.setString(2, cust.getName());
+                statement.setString(3, cust.getEmail());
+                statement.setLong(4, cust.getPhone());
+                statement.executeUpdate();
+                statement.close();
+            } catch (SQLException ex) {
+                System.out.println("SQLException: "+ex.getMessage());
             }
         }
         return cust;
     }
     
-    public void loadCustomer() // Load customer and set as current customer
+    //Method to search and load an existing customer from the database
+    public void loadCustomer()
     {
         Scanner scan = new Scanner(System.in);
         int emailCheck=0;
-        while(emailCheck==0) // Enter sequence to load customer
+        while(emailCheck==0)
         {
             System.out.print("Please enter email address for your account: ");
-            String email=scan.next(); // Scan user input
+            String email=scan.next();
             System.out.println("");
-            Iterator itr=this.hotel.getCustomerList().iterator(); // Initialise iterator to look through customer list
-            while(itr.hasNext()) // Look through customer list
+            Iterator itr=hotel.getCustomerList().iterator();
+            while(itr.hasNext())
             {
                 Object element=itr.next();
                 Customer cust=(Customer)element;
-                if(email.equals(cust.getEmail())) // If user email matches any in customer list, customer account is loaded
+                if(email.equals(cust.getEmail()))
                 {
                     System.out.println("Customer account loaded!");
                     System.out.println("------------------------");
-                    this.currentCustomer=cust; // Set current customer as customer found
-                    System.out.println(this.currentCustomer.toString()); // Print customer details
-                    emailCheck=1; // Customer loaded, so exit sequence
+                    currentCustomer=cust;
+                    System.out.println(currentCustomer.toString());
+                    emailCheck=1;
                 }
             }
-            if(emailCheck==0) // If customer not loaded
+            if(emailCheck==0)
             {
                 System.out.print("Email not found, type 'y' to"
                         + " try again, anything else to cancel: ");
-                String retry=scan.next().toLowerCase(); //Sacn user input
-                if(!retry.equals("y")) // If user cancels, don't try to load customer again
+                String retry=scan.next().toLowerCase();
+                if(!retry.equals("y"))
                     emailCheck=1;
             }
             System.out.println("");
@@ -234,21 +236,21 @@ public class HotelBooker {
         System.out.println("(1) Single"+"\n(2) Double"+"\n(3) Suite"+"\n");
         System.out.print("What type of room would you like to book? (1/2/3) (4 for main menu) ");
         try{
-            roomType=scan.nextInt(); // Scan user input
+            roomType=scan.nextInt();
         }catch(InputMismatchException e){
-            System.out.println("Invalid response, please try again.\n"); // If user input not a whole number, prompt user to input again
+            System.out.println("Invalid response, please try again.\n");
         }
         if(roomType>0&&roomType<4)
         {
-            available=this.checkAvailability(roomType); // Check if the type of room the user wants is available
-            if(available==false) // If desired room not available
+            available=checkAvailability(roomType); // Check if the type of room the user wants is available
+            if(available==false)
                 System.out.println("Sorry, no rooms of that type are available.");
-            else // If desired room available //*****
+            else
             {
-                currentBooking=this.createRoomBooking(currentCustomer.getAccount(), currentRoom.getRoomNo()); // Create room booking
+                currentBooking=createRoomBooking(currentCustomer.getAccount(), currentRoom.getRoomNo());
                 System.out.println("Booking created!");
                 System.out.println("----------------");
-                System.out.println(currentBooking.toString()); // Print room booking details
+                System.out.println(currentBooking.toString());
                 System.out.println("");
                 completed=0;
             }
@@ -262,7 +264,7 @@ public class HotelBooker {
     
     public boolean checkAvailability(int type) // Check the availability of specified type of room
     {
-        this.currentRoom=null;
+        currentRoom=null;
         boolean available=false;
         Iterator itr=hotel.getRoomList().iterator(); // Initialise iterator to look through room list
         switch(type)
@@ -274,7 +276,7 @@ public class HotelBooker {
                     if(room instanceof Single && room.getBookingStatus()==false) // If single room and available, set room as current room
                     {
                         available=true;
-                        this.currentRoom=room;
+                        currentRoom=room;
                     }
                 }
                 break;
@@ -285,7 +287,7 @@ public class HotelBooker {
                     if(room instanceof Double && room.getBookingStatus()==false) // If double room and available, set room as current room 
                     {
                         available=true;
-                        this.currentRoom=room;
+                        currentRoom=room;
                     }
                 }
                 break;
@@ -296,7 +298,7 @@ public class HotelBooker {
                     if(room instanceof Suite && room.getBookingStatus()==false) // If suite room and available, set room as current room
                     {
                         available=true;
-                        this.currentRoom=room;
+                        currentRoom=room;
                     }
                 }
                 break;
@@ -314,37 +316,37 @@ public class HotelBooker {
         int occupants=0;
         String dateS;
         String dateD;
-        LocalDate date=LocalDate.of(2000, 1, 1); // Initialise arrival date to 1 January 2000 //*****
-        LocalDate depart=LocalDate.of(2000, 1, 1); // Initialise departure date to 1 January 2000 //*****
-        Set<RoomBooking> bList=this.hotel.getRoomBookList(); 
+        Date date=Date.valueOf("2000-1-1"); // Initialise arrival date to 1 January 2000 //*****
+        Date depart=Date.valueOf("2000-1-1"); // Initialise departure date to 1 January 2000 //*****
+        Set<RoomBooking> bList=hotel.getRoomBookList(); 
         if(bList.isEmpty()) // If no room bookings in room booking list hashset, next room booking number is 1
             bookingNo=1;
         else
             bookingNo=bList.size()+1; // If room bookings in the room booking list hashset, next room booking number is 1 more than last
-        while(date.isBefore(LocalDate.now())) // While arrival date is before current day, enter sequence
+        while(date.before(Calendar.getInstance().getTime())) // While arrival date is before current day, enter sequence
         {
             System.out.print("What date would you like the booking for? (YYYY-MM-DD) ");
             dateS=scan.next(); // Scan user input
             try{
-                date=LocalDate.parse(dateS); // Try to get the user input as a valid date
+                date=Date.valueOf(dateS); // Try to get the user input as a valid date
             }catch(DateTimeParseException e){
                 System.out.println("Please enter a valid date."); // Print if date invalid
                 dateS="";
             }
-            if(date.isBefore(LocalDate.now())&&!dateS.isEmpty()) // If date before current date entered
+            if(date.before(Calendar.getInstance().getTime())&&!dateS.isEmpty()) // If date before current date entered
                 System.out.println("Date must not be earlier than today's date.");
         }
-        while(!depart.isAfter(date)) // While departure date before arrival date
+        while(!depart.after(date)) // While departure date before arrival date
         {
             System.out.print("Please enter departure date. (YYYY-MM-DD) ");
             dateD=scan.next(); //  Scan user input
             try{
-                depart=LocalDate.parse(dateD); // Try to get the user input as a valid date
+                depart=Date.valueOf(dateD); // Try to get the user input as a valid date
             }catch(DateTimeParseException e){
                 System.out.println("Please enter a valid date."); // Print if date invalid
                 dateD="";
             }
-            if(!depart.isAfter(date)&&!dateD.isEmpty()) // If departure date before arrival date entered
+            if(!depart.after(date)&&!dateD.isEmpty()) // If departure date before arrival date entered
                 System.out.println("Departure must be later than arrival.");
         }
         RoomBooking newBook=new RoomBooking(bookingNo, customerNo, roomNo, date); // Create room booking from the information
@@ -364,15 +366,38 @@ public class HotelBooker {
         newBook.setDuration();
         newBook.setPrice(currentRoom.getPrice());
         newBook.setOccupants(occupants);
-//        this.currentBooking=newBook; // Set room booking created as current booking
-        this.currentRoom.setBookingStatus(true); // Change booking status of room to booked
+        currentRoom.setBookingStatus(true); // Change booking status of room to booked
         hotel.addBooking(newBook);
+        
+        PreparedStatement statement;
+        try {
+            statement=conn.prepareStatement("INSERT INTO ROOM_BOOKINGS VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            statement.setInt(1, bookingNo);
+            statement.setInt(2, customerNo);
+            statement.setInt(3, roomNo);
+            statement.setDate(4, date);
+            statement.setDate(5, depart);
+            statement.setInt(6, newBook.getPrice());
+            statement.setInt(7, occupants);
+            statement.setLong(8, newBook.getDuration());
+            statement.executeUpdate();
+            statement.close();
+            //Update room status in the database
+            statement=conn.prepareStatement("UPDATE ROOMS SET BOOKINGSTATUS=? WHERE ROOMNO=?");
+            statement.setBoolean(1, true);
+            statement.setInt(2, roomNo);
+            statement.executeUpdate();
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+        
         return newBook; // Return room booking created
     }
     
     public int restaurantBookingDetails()
     {
-        RestaurantBooking booking=this.createRestaurantBooking(currentCustomer.getAccount()); // Create new restaurant booking
+        RestaurantBooking booking=createRestaurantBooking(currentCustomer.getAccount()); // Create new restaurant booking
         System.out.println("\nBooking successful!");
         System.out.println("-------------------");
         System.out.println(booking.toString()); // Print restaurant booking details
@@ -386,25 +411,25 @@ public class HotelBooker {
         int bookingNo=0;
         String dateS;
         int time=0;
-        LocalDate date=LocalDate.of(2000, 1, 1); // Set date to 1 January 2000
-        Set<RestaurantBooking> bList=this.hotel.getRestBookList(); 
+        Date date=Date.valueOf("2000-1-1"); // Set date to 1 January 2000
+        Set<RestaurantBooking> bList=hotel.getRestBookList(); 
         
         if(bList.isEmpty()) // If no restaurant bookings in restaurant booking list hashset, next restaurant booking number is 1
             bookingNo=1; 
         else
             bookingNo=bList.size()+1; // If restaurant bookings in the restaurant booking list hashset, next restaurant booking number is 1 more than last
         
-        while(date.isBefore(LocalDate.now())) // While booking date is before current date, enter sequence
+        while(date.before(Calendar.getInstance().getTime())) // While booking date is before current date, enter sequence
         {
             System.out.print("What date would you like the booking for? (YYYY-MM-DD) ");
             dateS=scan.next(); // Scan user input
             try{
-                date=LocalDate.parse(dateS); // Try to get the user input as a valid date
+                date=Date.valueOf(dateS); // Try to get the user input as a valid date
             }catch(DateTimeParseException e){
                 System.out.println("Please enter a valid date."); // Print if date invalid
                 dateS="";
             }
-            if(date.isBefore(LocalDate.now())&&!dateS.isEmpty()) // If date before current date entered
+            if(date.before(Calendar.getInstance().getTime())&&!dateS.isEmpty()) // If date before current date entered
                 System.out.println("Date must not be earlier than today's date.");
         }
         
@@ -423,6 +448,20 @@ public class HotelBooker {
         RestaurantBooking newBook=new RestaurantBooking(bookingNo, customerNo, date, time); // Create restaurant booking from the information
         //*** Add other things like end of room booking?
         hotel.addBooking(newBook);
+        
+        PreparedStatement statement;
+        try {
+            statement=conn.prepareStatement("INSERT INTO RESTAURANT_BOOKINGS VALUES (?, ?, ?, ?)");
+            statement.setInt(1, bookingNo);
+            statement.setInt(2, customerNo);
+            statement.setDate(3, date);
+            statement.setInt(4, time);
+            statement.executeUpdate();
+            statement.close();
+        } catch (SQLException ex) {
+            Logger.getLogger(HotelBooker.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         return newBook; // Return restaurant booking created
     }
     
@@ -490,8 +529,8 @@ public class HotelBooker {
                 }
                 break;
             case 3:
-                this.bookingEnquiry(1, custNo);
-                this.bookingEnquiry(2, custNo);
+                bookingEnquiry(1, custNo);
+                bookingEnquiry(2, custNo);
                 break;
             case 4:
                 break;
@@ -501,181 +540,135 @@ public class HotelBooker {
         return completed;
     }
     
-    public void saveHotel()
+    //Run on start up to load all saved data from the database
+    public boolean loadHotel()
     {
-        PrintWriter pw=null;
-        File file=null;
-        try 
-        { // Save the hotel to a file //*****
-            Set<Room> roomList=hotel.getRoomList();
-            Set<Customer> customerList=hotel.getCustomerList();
-            Set<RoomBooking> roomBookList=hotel.getRoomBookList();
-            Set<RestaurantBooking> restBookList=hotel.getRestBookList();
-            file=new File("Rooms.txt"); // Try to save to "PDC Hotel" file
-            pw=new PrintWriter(new FileOutputStream(file)); //*****
-            for(Room room : roomList) // Write each room object in the room list hashset to the file
+        boolean loaded=true;
+        
+        Statement statement;
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM ROOMS");
+            while(rs.next())
             {
-                if(room instanceof Single)
-                    pw.write("Single,");
-                else if(room instanceof Double)
-                    pw.write("Double,");
-                else
-                    pw.write("Suite,");
-                pw.write(room.getRoomNo()+",");
-                pw.write(room.getPrice()+",");
-                pw.write(room.getBookingStatus()+"");
-                pw.println();
-            }
-            pw.close();
-            file=new File("Customers.txt");
-            pw=new PrintWriter(new FileOutputStream(file)); //*****
-            for(Customer customer : customerList) // Write each customer object in the customer list hashset to the file
-            {
-                pw.write(customer.getAccount()+",");
-                pw.write(customer.getName()+",");
-                pw.write(customer.getEmail()+",");
-                pw.write(customer.getPhone());
-                pw.println();
-            }
-            pw.close();
-            file=new File("RoomBookings.txt");
-            pw=new PrintWriter(new FileOutputStream(file)); //*****
-            for(RoomBooking book : roomBookList) // Write each customer object in the customer list hashset to the file
-            {
-                pw.write(book.getBookingNo()+",");
-                pw.write(book.getCustomer()+",");
-                pw.write(book.getRoom()+",");
-                pw.write(book.getDate()+",");
-                pw.write(book.getDeparture()+",");
-                pw.write(book.getPrice()+",");
-                pw.write(book.getOccupants()+",");
-                pw.write(book.getDuration()+"");
-                pw.println();
-            }
-            pw.close();
-            file=new File("RestaurantBookings.txt");
-            pw=new PrintWriter(new FileOutputStream(file)); //*****
-            for(RestaurantBooking booking : restBookList) // Write each restaurant booking object in the restaurant booking list hashset to the file
-            {
-                pw.write(booking.getBookingNo()+",");
-                pw.write(booking.getCustomer()+",");
-                pw.write(booking.getDate()+",");
-                pw.write(booking.getTime()+"");
-                pw.println();
-            }
-            pw.close();
-        } catch (FileNotFoundException ex) { // If file not found
-            System.out.println("File "+file.getName()+" save failed.");
-        } 
-    }
-    
-    public boolean loadHotel() // Create the hotel from a file //*******
-    {
-        boolean loaded=true; // Assume hotel can be loaded from file
-        File file=null;
-        BufferedReader br=null;
-        try 
-        {
-            file=new File("Rooms.txt");
-            br=new BufferedReader(new FileReader(file));
-            String line=null;
-            while((line=br.readLine())!=null)
-            {
-                String type="";
-                int roomNo=0;
-                int price=0;
-                boolean status=true;
-                StringTokenizer st=new StringTokenizer(line, "\n,");
-                while(st.hasMoreTokens())
-                {
-                    type=st.nextToken();
-                    roomNo=Integer.parseInt(st.nextToken());
-                    price=Integer.parseInt(st.nextToken());
-                    status=st.nextToken().equals("true");
-                }
-                if(type.equals("Single"))
+                int roomNo=rs.getInt("roomNo");
+                String type=rs.getString("type");
+                boolean status=rs.getBoolean("bookingstatus");
+                int price=rs.getInt("price");
+                if(type.equalsIgnoreCase("single"))
                     hotel.getRoomList().add(new Single(roomNo, price, status));
-                if(type.equals("Double"))
+                else if(type.equalsIgnoreCase("double"))
                     hotel.getRoomList().add(new Double(roomNo, price, status));
-                if(type.equals("Suite"))
+                else if(type.equals("suite"))
                     hotel.getRoomList().add(new Suite(roomNo, price, status));
             }
-            br.close();
-            file=new File("Customers.txt");
-            br=new BufferedReader(new FileReader(file));
-            line=null;
-            while((line=br.readLine())!=null)
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+        //If there were no rooms to load, run method to populate the set
+        if(hotel.getRoomList().isEmpty())
+        {
+            System.out.println("Initialising first time setup.");
+            setupRooms(50, 25, 10);
+        }
+        
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM CUSTOMERS");
+            while(rs.next())
             {
-                int account=0;
-                String name="";
-                String email="";
-                String phone="";
-                StringTokenizer st=new StringTokenizer(line, "\n,");
-                while(st.hasMoreTokens())
-                {
-                    account=Integer.parseInt(st.nextToken());
-                    name=st.nextToken();
-                    email=st.nextToken();
-                    phone=st.nextToken();
-                }
+                int account=rs.getInt("custno");
+                String name=rs.getString("name");
+                String email=rs.getString("email");
+                int phone=rs.getInt("phoneno");
                 hotel.getCustomerList().add(new Customer(account, name, email, phone));
             }
-            br.close();
-            file=new File("RoomBookings.txt");
-            br=new BufferedReader(new FileReader(file));
-            line=null;
-            while((line=br.readLine())!=null)
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+        
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM ROOM_BOOKINGS");
+            while(rs.next())
             {
-                int bookingNo=0;
-                int customerNo=0;
-                int roomNo=0;
-                LocalDate date=null;
-                LocalDate departure=null;
-                int price=0;
-                int occupants=0;
-                long duration=0;
-                StringTokenizer st=new StringTokenizer(line, "\n,");
-                while(st.hasMoreTokens())
-                {
-                    bookingNo=Integer.parseInt(st.nextToken());
-                    customerNo=Integer.parseInt(st.nextToken());
-                    roomNo=Integer.parseInt(st.nextToken());
-                    date=LocalDate.parse(st.nextToken());
-                    departure=LocalDate.parse(st.nextToken());
-                    price=Integer.parseInt(st.nextToken());
-                    occupants=Integer.parseInt(st.nextToken());
-                    duration=Long.parseLong(st.nextToken());
-                }
+                int bookingNo=rs.getInt("bookingno");
+                int customerNo=rs.getInt("custno");
+                int roomNo=rs.getInt("roomno");
+                Date date=rs.getDate("date");
+                Date departure=rs.getDate("departure");
+                int price=rs.getInt("price");
+                int occupants=rs.getInt("occupants");
+                long duration=rs.getLong("duration");
                 hotel.getRoomBookList().add(new RoomBooking(bookingNo, customerNo, roomNo, date, departure, price, occupants, duration));
             }
-            br.close();
-            file=new File("RestaurantBookings.txt");
-            br=new BufferedReader(new FileReader(file));
-            line=null;
-            while((line=br.readLine())!=null)
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+        
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM RESTAURANT_BOOKINGS");
+            while(rs.next())
             {
-                int bookingNo=0;
-                int customerNo=0;
-                LocalDate date=null;
-                int time=0;
-                StringTokenizer st=new StringTokenizer(line, "\n,");
-                while(st.hasMoreTokens())
-                {
-                    bookingNo=Integer.parseInt(st.nextToken());
-                    customerNo=Integer.parseInt(st.nextToken());
-                    date=LocalDate.parse(st.nextToken());
-                    time=Integer.parseInt(st.nextToken());
-                }
+                int bookingNo=rs.getInt("bookingno");
+                int customerNo=rs.getInt("custno");
+                Date date=rs.getDate("date");
+                int time=rs.getInt("time");
                 hotel.getRestBookList().add(new RestaurantBooking(bookingNo, customerNo, date, time));
             }
-            br.close();
-        } catch (FileNotFoundException ex) // If file not found, indicate file not loaded
-        {
-            loaded=false;
-        } catch (IOException ex) //******
-        {
-            loaded=false;
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
         }
         return loaded; // Return loaded variable
+    }
+    
+    private void dbSetup()
+    {
+        //establishes connection to the database, creates the tables if they don't already exist
+        String url="jdbc:derby:PDCHotel;create=true";
+        try {
+            conn=DriverManager.getConnection(url, "vsf2319", "Hotel123");
+            Statement statement=conn.createStatement();
+            if(!tableCheck("rooms"))
+                statement.execute("CREATE TABLE rooms (roomno INT NOT NULL, type VARCHAR(10),"
+                        + " bookingstatus BOOLEAN, price INT, PRIMARY KEY (roomno))");
+            if(!tableCheck("customers"))
+                statement.execute("CREATE TABLE customers (custno INT NOT NULL, name VARCHAR(25),"
+                        + " email VARCHAR(50), phoneno BIGINT, PRIMARY KEY (custno))");
+            if(!tableCheck("room_bookings"))
+                statement.execute("CREATE TABLE room_bookings (bookingno INT NOT NULL, custno INT,"
+                        + " roomno INT, date DATE, departure DATE, price INT, occupants INT,"
+                        + " duration BIGINT, PRIMARY KEY (bookingno))");
+            if(!tableCheck("restaurant_bookings"))
+                statement.execute("CREATE TABLE restaurant_bookings (bookingno INT NOT NULL,"
+                        + " custno INT, date DATE, time INT, PRIMARY KEY (bookingno))");
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+    }
+    
+    private boolean tableCheck(String table)
+    {
+        //helper method to create tables during initial db setup
+        boolean exists=false;
+        try {
+            DatabaseMetaData dbmd=conn.getMetaData();
+            ResultSet rs=dbmd.getTables(null, null, null, null);
+            while(rs.next())
+            {
+                String tab=rs.getString("TABLE_NAME");
+                if(tab.equalsIgnoreCase(table))
+                    exists=true;
+            }
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+        return exists;
     }
 }

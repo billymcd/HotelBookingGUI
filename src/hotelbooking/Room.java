@@ -5,13 +5,11 @@
  */
 package hotelbooking;
 
-import java.io.Serializable;
-
 /**
  *
  * @author Billy McCarthy-Dowd
  */
-public abstract class Room implements Serializable {
+public abstract class Room {
     protected boolean booked;
     protected int roomNo, price;
     protected String status;
