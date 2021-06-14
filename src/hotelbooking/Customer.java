@@ -68,8 +68,8 @@ public class Customer {
     public String toString() // Function prints details of customer
     {
         String customerString;
-        customerString="Account Number: "+accountNo+"\nName: "+name+"\nEmail: "
-                +email+"\nPhone: "+phoneNo;
+        customerString="Name: "+name+", Account Number: "+accountNo+", Email: "
+                +email+", Phone: "+phoneNo;
         return customerString;
     }
 }
