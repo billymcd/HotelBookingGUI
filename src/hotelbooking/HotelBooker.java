@@ -27,8 +27,8 @@ import java.util.logging.Logger;
  * @author Billy McCarthy-Dowd
  */
 public class HotelBooker {
-    private final Hotel hotel;
-    private Customer currentCustomer;
+    public final Hotel hotel;
+    public Customer currentCustomer;
     private String response;
     private Room currentRoom;
     private Booking currentBooking;
@@ -37,7 +37,8 @@ public class HotelBooker {
     public HotelBooker(String name, String location, int rating)
     {
         dbSetup();
-        this.hotel = new Hotel(name, location, rating, conn);
+        hotel = new Hotel(name, location, rating, conn);
+        loadHotel();
     }
     
     public static void main(String[] args) 
@@ -121,7 +122,7 @@ public class HotelBooker {
         switch(response)
         {
             case "y": // If user indicates they have booked before
-                loadCustomer();
+//                loadCustomer();
                 if(currentCustomer!=null) // If current customer loaded, set variable to match
                     customerLoaded=1;
                 break;
@@ -191,39 +192,20 @@ public class HotelBooker {
     }
     
     //Method to search and load an existing customer from the database
-    public void loadCustomer()
+    public boolean loadCustomer(String email)
     {
-        Scanner scan = new Scanner(System.in);
-        int emailCheck=0;
-        while(emailCheck==0)
+        Iterator itr=hotel.getCustomerList().iterator();
+        while(itr.hasNext())
         {
-            System.out.print("Please enter email address for your account: ");
-            String email=scan.next();
-            System.out.println("");
-            Iterator itr=hotel.getCustomerList().iterator();
-            while(itr.hasNext())
+            Object element=itr.next();
+            Customer cust=(Customer)element;
+            if(email.equals(cust.getEmail()))
             {
-                Object element=itr.next();
-                Customer cust=(Customer)element;
-                if(email.equals(cust.getEmail()))
-                {
-                    System.out.println("Customer account loaded!");
-                    System.out.println("------------------------");
-                    currentCustomer=cust;
-                    System.out.println(currentCustomer.toString());
-                    emailCheck=1;
-                }
+                currentCustomer=cust;
+                return true;
             }
-            if(emailCheck==0)
-            {
-                System.out.print("Email not found, type 'y' to"
-                        + " try again, anything else to cancel: ");
-                String retry=scan.next().toLowerCase();
-                if(!retry.equals("y"))
-                    emailCheck=1;
-            }
-            System.out.println("");
         }
+        return false;
     }
     
     public int roomBookingDetails()
