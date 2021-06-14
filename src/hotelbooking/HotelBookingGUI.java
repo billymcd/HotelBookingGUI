@@ -11,19 +11,34 @@ import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Properties;
 import java.util.Set;
-import javafx.scene.control.DatePicker;
+import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField.AbstractFormatter;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import org.jdatepicker.impl.JDatePanelImpl;
+import org.jdatepicker.impl.JDatePickerImpl;
+import org.jdatepicker.impl.UtilDateModel;
+
+//image obtained for free from the following url
+//https://www.pexels.com/photo/bedroom-door-entrance-guest-room-271639/
 
 /**
  *
@@ -33,21 +48,26 @@ public class HotelBookingGUI extends JPanel
 {
     private HotelBooker hotBook;
     public final int PANEL_WIDTH=600;
-    public final int PANEL_HEIGHT=600;
+    public final int PANEL_HEIGHT=400;
     private JPanel welcomePanel, eCustPanel, newCustPanel, bookingPanel, enquiryPanel, 
-            northPanel, southPanel, centralPanel, centralBooking, roomBooking, restBooking;
-    private JButton loginButton, exitButton, acceptButton, newCustomerButton, 
-            existingCustButton, roomButton, restaurantButton, bookingButton, 
-            enquiryButton, logoutButton, startDate, endDate, date;
-    private JTextField emailField, nameField, newEmailField, phoneField;
+            northPanel, southPanel, centralPanel, roomBooking, restBooking;
+    private JButton loginButton, exitButton, newCustomerButton, existingCustButton,
+            acceptRoom, bookingButton, enquiryButton, logoutButton, acceptRest;
+    private JTextField emailField, nameField, newEmailField, phoneField, 
+            bookingDetails, occupants;
     private JLabel welcomeMessage;
-    private DatePicker datePicker;
+    private JDatePanelImpl datePanel, startPanel, departPanel;
+    private JDatePickerImpl datePicker, startPicker, departPicker;
     private JList roomList, restList;
-    private String welcome, cust;
+    private DefaultListModel roomListModel, restListModel;
+    private String welcome, cust, roomType, time;
     private ButtonListener bListener;
-    private Set<RestaurantBooking> bookings;
-    private Set<RoomBooking> roomBookings;
+    private Set<Booking> bookings, roomBookings;
     private ListListener lListener;
+    private ImageIcon welcomePic;
+    private JTabbedPane centralBooking;
+    private JComboBox roomPicker, timePicker;
+    private ComboBoxListener cbListener;
     
     public HotelBookingGUI()
     {
@@ -113,19 +133,64 @@ public class HotelBookingGUI extends JPanel
             if(e.getSource().equals(enquiryButton))
             {
                 updateCentralPanel(enquiryPanel);
-                loadList(roomBookings, roomList);
-                loadList(bookings, restList);
                 repaint();
+//                System.out.println(roomList);
+//                String[] s=(String[])restList.getSelectedValues();
+//                System.out.println(s[0]);
+            }
+            if(e.getSource().equals(acceptRoom))
+            {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+            if(e.getSource().equals(acceptRest))
+            {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
         }
     }
     
     private class ListListener implements ListSelectionListener
+            {
+      public void valueChanged(ListSelectionEvent listSelectionEvent) {
+        System.out.println("First index: " + listSelectionEvent.getFirstIndex());
+        System.out.println(", Last index: " + listSelectionEvent.getLastIndex());
+        boolean adjust = listSelectionEvent.getValueIsAdjusting();
+        System.out.println(", Adjusting? " + adjust);
+        if (!adjust) {
+          JList list = (JList) listSelectionEvent.getSource();
+          int selections[] = list.getSelectedIndices();
+          Object selectionValues[] = list.getSelectedValues();
+          for (int i = 0, n = selections.length; i < n; i++) {
+            if (i == 0) {
+              System.out.println(" Selections: ");
+            }
+            System.out.println(selections[i] + "/" + selectionValues[i] + " ");
+          }
+        }
+      }
+    }
+//    {
+//        @Override
+//        public void valueChanged(ListSelectionEvent e) 
+//        {
+//            if(e.getSource().equals(roomList))
+//            {
+//                System.out.println("click");
+//                String selection=(String)roomList.getSelectedValue();
+//                System.out.println(selection);
+//            }
+//        }
+//    }
+    
+    private class ComboBoxListener implements ActionListener
     {
         @Override
-        public void valueChanged(ListSelectionEvent e) 
+        public void actionPerformed(ActionEvent e) 
         {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            if(e.getSource().equals(roomPicker))
+                roomType=(String)roomPicker.getSelectedItem();
+            if(e.getSource().equals(timePicker))
+                time=(String)timePicker.getSelectedItem();
         }
     }
     
@@ -163,18 +228,17 @@ public class HotelBookingGUI extends JPanel
         existingCustButton.addActionListener(bListener);
         loginButton=new JButton("Login");
         loginButton.addActionListener(bListener);
-        acceptButton=new JButton("Accept");
-        acceptButton.addActionListener(bListener);
+        acceptRoom=new JButton("Accept");
+        acceptRoom.addActionListener(bListener);
+        acceptRest=new JButton("Accept");
+        acceptRest.addActionListener(bListener);
         bookingButton=new JButton("Booking");
         bookingButton.addActionListener(bListener);
-        roomButton=new JButton("Room");
-        roomButton.addActionListener(bListener);
-        restaurantButton=new JButton("Restaurant");
-        restaurantButton.addActionListener(bListener);
         enquiryButton=new JButton("Enquiry");
         enquiryButton.addActionListener(bListener);
         logoutButton=new JButton("Logout");
         logoutButton.addActionListener(bListener);
+        
     }
     
     private void setupPanels()
@@ -202,7 +266,8 @@ public class HotelBookingGUI extends JPanel
         centralPanel=new JPanel();
         welcomePanel=new JPanel();
         welcomePanel.setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
-        welcomePanel.add(new JLabel("Placeholder for image"));
+        welcomePic=new ImageIcon("Images/stock-hotel-image.jpg");
+        welcomePanel.add(new JLabel(welcomePic));
         centralPanel.add(welcomePanel);
     }
     
@@ -234,42 +299,130 @@ public class HotelBookingGUI extends JPanel
         newCustPanel.setLayout(layout);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
-        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(name).addComponent(nameField).addComponent(acceptButton)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(email).addComponent(newEmailField)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(phone).addComponent(phoneField)));
-        layout.setVerticalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(name).addComponent(email).addComponent(phone)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(nameField).addComponent(newEmailField).addComponent(phoneField)).addComponent(acceptButton));
+        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(name).addComponent(nameField).addComponent(acceptRoom)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(email).addComponent(newEmailField)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(phone).addComponent(phoneField)));
+        layout.setVerticalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(name).addComponent(email).addComponent(phone)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(nameField).addComponent(newEmailField).addComponent(phoneField)).addComponent(acceptRoom));
     }
     
     private void bookings()
     {
-        bookingPanel=new JPanel(new BorderLayout());
+        bookingPanel=new JPanel();
         bookingPanel.setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
-        centralBooking=new JPanel();
-        roomBooking=new JPanel();
-        restBooking=new JPanel();
-        JPanel bbPanel=new JPanel();
-        bbPanel.add(roomButton);
-        bbPanel.add(restaurantButton);
-        bookingPanel.add(bbPanel, BorderLayout.NORTH);
-        bookingPanel.add(centralBooking, BorderLayout.CENTER);
-//        datePicker=new DatePicker();
+        centralBooking=new JTabbedPane();
+        cbListener=new ComboBoxListener();
+        setupDatePanels();
+        roomPanel();
+        restPanel();
+        centralBooking.addTab("Room Booking", roomBooking);
+        centralBooking.addTab("Restaurant Booking", restBooking);
+        bookingPanel.add(centralBooking);
+    }
+    
+    private void setupDatePanels()
+    {
+        UtilDateModel model=new UtilDateModel();
+        UtilDateModel model2=new UtilDateModel();
+        UtilDateModel model3=new UtilDateModel();
+        Properties p=new Properties();
+        p.put("text.today", "Today");
+        p.put("text.month", "Month");
+        p.put("text.year", "Year");
+        datePanel=new JDatePanelImpl(model, p);
+        startPanel=new JDatePanelImpl(model2, p);
+        departPanel=new JDatePanelImpl(model3, p);
     }
     
     private void roomPanel()
     {
-        
+        roomBooking=new JPanel(new BorderLayout());
+        occupants=new JTextField(2);
+        roomPicker=new JComboBox(new String[] {"Single", "Double", "Suite"});
+        roomPicker.addActionListener(cbListener);
+        startPicker=new JDatePickerImpl(startPanel, new DateLabelFormatter());
+        departPicker=new JDatePickerImpl(departPanel, new DateLabelFormatter());
+        JPanel top=new JPanel();
+        JPanel bot=new JPanel();
+        top.add(new JLabel("Arrival: "));
+        top.add(startPicker);
+        top.add(new JLabel("Departure: "));
+        top.add(departPicker);
+        roomBooking.add(top, BorderLayout.NORTH);
+        bot.add(new JLabel("Room type: "));
+        bot.add(roomPicker);
+        bot.add(new JLabel("No. of occupants: "));
+        bot.add(occupants);
+        bot.add(acceptRoom);
+        roomBooking.add(bot);
     }
     
     private void restPanel()
     {
-        
+        restBooking=new JPanel();
+        String[] times=setupTimes(1100, 2300);
+        timePicker=new JComboBox(times);
+        timePicker.addActionListener(cbListener);
+        datePicker=new JDatePickerImpl(datePanel, new DateLabelFormatter());
+        restBooking.add(new JLabel("Date: "));
+        restBooking.add(datePicker);
+        restBooking.add(new JLabel("Time: "));
+        restBooking.add(timePicker);
+        restBooking.add(acceptRest);
+    }
+    
+    private String[] setupTimes(int open, int close)
+    {
+        int totalOpen=close-open;
+        int availableTimes=totalOpen/25+1;
+        int hours=totalOpen/100;
+        String[] times=new String[availableTimes];
+        int index=0;
+        int hour=open/100;
+        for(int i=0;i<hours;i++)
+        {
+            for(int j=0;j<4;j++)
+            {
+                if(j==0)
+                    times[index]=hour+":00";
+                else
+                    times[index]=hour+":"+j*15;
+                index++;
+            }
+            hour++;
+        }
+        times[index]=hour+":00";
+        return times;
     }
     
     private void enquiryPanel()
     {
+        setupLists();
         enquiryPanel=new JPanel(new BorderLayout());
-        roomList=new JList();
-        restList=new JList();
-        enquiryPanel.add(roomList, BorderLayout.WEST);
-        enquiryPanel.add(restList,BorderLayout.EAST);
+        bookingDetails=new JTextField();
+        bookingDetails.setEditable(false);
+        JTabbedPane enquiryPanels=new JTabbedPane();
+        JPanel bot=new JPanel();
+        JLabel label=new JLabel("Booking details:");
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        bot.add(label);
+        bot.add(bookingDetails);
+        enquiryPanels.add("Room Bookings", new JScrollPane(roomList));
+        enquiryPanels.add("Restaurant Bookings", new JScrollPane(restList));
+        enquiryPanel.add(enquiryPanels, BorderLayout.NORTH);
+//        enquiryPanel.add(bot, BorderLayout.SOUTH);
+        enquiryPanel.add(label, BorderLayout.CENTER);
+        enquiryPanel.add(bookingDetails, BorderLayout.SOUTH);
+        
+    }
+    
+    private void setupLists()
+    {
+        roomListModel=new DefaultListModel();
+        roomList=new JList(roomListModel);
+        roomList.addListSelectionListener(lListener);
+        roomList.setPreferredSize(new Dimension(250, 100));
+        restListModel=new DefaultListModel();
+        restList=new JList(restListModel);
+        restList.addListSelectionListener(lListener);
+        restList.setPreferredSize(new Dimension(250, 100));
     }
     
     private void buttonPanel()
@@ -280,19 +433,17 @@ public class HotelBookingGUI extends JPanel
         southPanel.add(exitButton);
     }
     
-    private void loadList(Set bookings, JList list)
+    private void loadList(Set<Booking> bookings, JList list)
     {
-        Booking[] book=new Booking[bookings.size()];
-        bookings.toArray(book);
-        String[] bookString=new String[bookings.size()];
-        for(int i=0;i<book.length;i++)
+        DefaultListModel model;
+        if(list.equals(roomList))
+            model=roomListModel;
+        else
+            model=restListModel;
+        for(Booking booking : bookings)
         {
-            Booking b=book[i];
-            String s="Booking no: ";
-            s=s.concat(b.getBookingNo()+", Date: "+b.getDate());
-            bookString[i]=s;
+            model.addElement(booking);
         }
-        list.setListData(bookString);
     }
     
     private void logout()
@@ -305,6 +456,8 @@ public class HotelBookingGUI extends JPanel
         nameField.setText("");
         newEmailField.setText("");
         phoneField.setText("");
+        roomListModel.clear();
+        restListModel.clear();
     }
     
     private void loadCustomer()
@@ -323,6 +476,31 @@ public class HotelBookingGUI extends JPanel
             welcomeMessage.setText(cust);
             bookings=hotBook.hotel.getRestBookList();
             roomBookings=hotBook.hotel.getRoomBookList();
+            loadList(roomBookings, roomList);
+            loadList(bookings, restList);
+        }
+    }
+    
+    public class DateLabelFormatter extends AbstractFormatter 
+    {
+        private String datePattern = "yyyy-MM-dd";
+        private SimpleDateFormat dateFormatter = new SimpleDateFormat(datePattern);
+        
+        @Override
+        public Object stringToValue(String text) throws ParseException 
+        {
+            return dateFormatter.parseObject(text);
+        }
+        
+        @Override
+        public String valueToString(Object value) throws ParseException 
+        {
+            if (value != null) 
+            {
+                Calendar cal = (Calendar) value;
+                return dateFormatter.format(cal.getTime());
+            }
+            return "";
         }
     }
 }

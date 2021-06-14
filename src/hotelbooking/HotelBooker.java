@@ -300,7 +300,7 @@ public class HotelBooker {
         String dateD;
         Date date=Date.valueOf("2000-1-1"); // Initialise arrival date to 1 January 2000 //*****
         Date depart=Date.valueOf("2000-1-1"); // Initialise departure date to 1 January 2000 //*****
-        Set<RoomBooking> bList=hotel.getRoomBookList(); 
+        Set<Booking> bList=hotel.getRoomBookList(); 
         if(bList.isEmpty()) // If no room bookings in room booking list hashset, next room booking number is 1
             bookingNo=1;
         else
@@ -394,7 +394,7 @@ public class HotelBooker {
         String dateS;
         int time=0;
         Date date=Date.valueOf("2000-1-1"); // Set date to 1 January 2000
-        Set<RestaurantBooking> bList=hotel.getRestBookList(); 
+        Set<Booking> bList=hotel.getRestBookList(); 
         
         if(bList.isEmpty()) // If no restaurant bookings in restaurant booking list hashset, next restaurant booking number is 1
             bookingNo=1; 
@@ -456,7 +456,7 @@ public class HotelBooker {
         {
             case 1:
                 bookingCount=0;
-                Set<RoomBooking> roomList=hotel.getRoomBookList();
+                Set<Booking> roomList=hotel.getRoomBookList();
                 itr=roomList.iterator();
                 while(itr.hasNext())
                 {
@@ -484,7 +484,7 @@ public class HotelBooker {
                 break;
             case 2:
                 bookingCount=0;
-                Set<RestaurantBooking> restList=hotel.getRestBookList();
+                Set<Booking> restList=hotel.getRestBookList();
                 itr=restList.iterator();
                 while(itr.hasNext())
                 {

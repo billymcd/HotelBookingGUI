@@ -23,8 +23,8 @@ public class Hotel {
     private final int rating;
     private final Set<Room> roomList;
     private final Set<Customer> customerList;
-    private final Set<RoomBooking> roomBookList;
-    private final Set<RestaurantBooking> restBookList;
+    private final Set<Booking> roomBookList;
+    private final Set<Booking> restBookList;
     private Connection conn;
     
     public Hotel(String name, String location, int rating, Connection conn)
@@ -154,12 +154,12 @@ public class Hotel {
             restBookList.add((RestaurantBooking)newBooking);
     }
     
-    public Set<RoomBooking> getRoomBookList() // Function allows access to private variable
+    public Set<Booking> getRoomBookList() // Function allows access to private variable
     {
         return roomBookList;
     }
     
-    public Set<RestaurantBooking> getRestBookList() // Function allows access to private variable
+    public Set<Booking> getRestBookList() // Function allows access to private variable
     {
         return restBookList;
     }
