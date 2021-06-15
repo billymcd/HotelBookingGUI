@@ -12,15 +12,15 @@ import java.sql.Date;
  * @author Billy McCarthy-Dowd
  */
 public class RestaurantBooking extends Booking { //**********
-    private final int time;
+    private final String time;
     
-    public RestaurantBooking(int bookingNo, int customerNo, Date date, int time) // Constructor initialises variables 
+    public RestaurantBooking(int bookingNo, int customerNo, Date date, String time) // Constructor initialises variables 
     {
         super(bookingNo, customerNo, date); // Booking created according to booking constructor
         this.time=time; // Restaurant booking time set as corresponding input parameter
     }
     
-    public int getTime() // Function allows access to private variable
+    public String getTime() // Function allows access to private variable
     {
         return time;
     }

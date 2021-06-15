@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashSet;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -93,12 +92,11 @@ public class Hotel {
         if (validEmail==false||validPhoneNumber==false)
             return null;
 
-        long phoneNo=Long.parseLong(phone);
         if(customerList.isEmpty())
             accountNo=1;
         else
             accountNo=customerList.size()+1;
-        Customer cust=new Customer(accountNo, name, email, phoneNo);
+        Customer cust=new Customer(accountNo, name, email, phone);
         int start=customerList.size();
         customerList.add(cust);
         int end=customerList.size();
