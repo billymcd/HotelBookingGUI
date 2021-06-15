@@ -14,8 +14,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Calendar;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -80,7 +81,7 @@ public final class HotelBooker {
         {
             Object element=itr.next();
             Customer cust=(Customer)element;
-            if(email.equals(cust.getEmail()))
+            if(email.equalsIgnoreCase(cust.getEmail()))
             {
                 currentCustomer=cust;
                 return true;
@@ -161,7 +162,7 @@ public final class HotelBooker {
         currentRoom.setBookingStatus(true);
         hotel.addBooking(newBook);
         
-        commitBooking(bookingNo, start, end, newBook, occ);
+        commitRoomBooking(bookingNo, start, end, newBook, occ);
         return true;
     }
         
@@ -177,107 +178,23 @@ public final class HotelBooker {
         RestaurantBooking newBook=new RestaurantBooking(bookingNo, currentCustomer.getAccount(), date, time);
         hotel.addBooking(newBook);
         
-        PreparedStatement statement;
-        try {
-            statement=conn.prepareStatement("INSERT INTO RESTAURANT_BOOKINGS VALUES (?, ?, ?, ?)");
-            statement.setInt(1, bookingNo);
-            statement.setInt(2, currentCustomer.getAccount());
-            statement.setDate(3, date);
-            statement.setString(4, time);
-            statement.executeUpdate();
-            statement.close();
-        } catch (SQLException ex) {
-            Logger.getLogger(HotelBooker.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
+        commitNewRestBooking(bookingNo, date, time);
         return newBook;
     }
     
     //Run on start up to load all saved data from the database
-    public boolean loadHotel()
+    public void loadHotel()
     {
-        boolean loaded=true;
-        
-        Statement statement;
-        try {
-            statement=conn.createStatement();
-            ResultSet rs=statement.executeQuery("SELECT * FROM ROOMS");
-            while(rs.next())
-            {
-                int roomNo=rs.getInt("roomNo");
-                String type=rs.getString("type");
-                boolean status=rs.getBoolean("bookingstatus");
-                int price=rs.getInt("price");
-                if(type.equalsIgnoreCase("single"))
-                    hotel.getRoomList().add(new Single(roomNo, price, status));
-                else if(type.equalsIgnoreCase("double"))
-                    hotel.getRoomList().add(new Double(roomNo, price, status));
-                else if(type.equals("suite"))
-                    hotel.getRoomList().add(new Suite(roomNo, price, status));
-            }
-            statement.close();
-        } catch (SQLException ex) {
-            System.out.println("SQLException: "+ex.getMessage());
-        }
-        
+        loadRooms();
+        loadCustomers();
+        loadRoomBookings();
+        loadRestBookings();
+        //If there's no rooms to load ie first time running, generate a new set of rooms
         if(hotel.getRoomList().isEmpty())
         {
             System.out.println("Initialising first time setup.");
             setupRooms(50, 25, 10);
         }
-        
-        try {
-            statement=conn.createStatement();
-            ResultSet rs=statement.executeQuery("SELECT * FROM CUSTOMERS");
-            while(rs.next())
-            {
-                int account=rs.getInt("custno");
-                String name=rs.getString("name");
-                String email=rs.getString("email");
-                String phone=rs.getString("phoneno");
-                hotel.getCustomerList().add(new Customer(account, name, email, phone));
-            }
-            statement.close();
-        } catch (SQLException ex) {
-            System.out.println("SQLException: "+ex.getMessage());
-        }
-        
-        try {
-            statement=conn.createStatement();
-            ResultSet rs=statement.executeQuery("SELECT * FROM ROOM_BOOKINGS");
-            while(rs.next())
-            {
-                int bookingNo=rs.getInt("bookingno");
-                int customerNo=rs.getInt("custno");
-                int roomNo=rs.getInt("roomno");
-                Date date=rs.getDate("date");
-                Date departure=rs.getDate("departure");
-                int price=rs.getInt("price");
-                int occupants=rs.getInt("occupants");
-                long duration=rs.getLong("duration");
-                hotel.getRoomBookList().add(new RoomBooking(bookingNo, customerNo, roomNo, date, departure, price, occupants, duration));
-            }
-            statement.close();
-        } catch (SQLException ex) {
-            System.out.println("SQLException: "+ex.getMessage());
-        }
-        
-        try {
-            statement=conn.createStatement();
-            ResultSet rs=statement.executeQuery("SELECT * FROM RESTAURANT_BOOKINGS");
-            while(rs.next())
-            {
-                int bookingNo=rs.getInt("bookingno");
-                int customerNo=rs.getInt("custno");
-                Date date=rs.getDate("date");
-                String time=rs.getString("time");
-                hotel.getRestBookList().add(new RestaurantBooking(bookingNo, customerNo, date, time));
-            }
-            statement.close();
-        } catch (SQLException ex) {
-            System.out.println("SQLException: "+ex.getMessage());
-        }
-        return loaded;
     }
     
     //establishes connection to the database, creates the tables if they don't already exist
@@ -325,9 +242,9 @@ public final class HotelBooker {
         return exists;
     }
     
-    public Set<Booking> currentCustBookings(String type)
+    public List<Booking> currentCustBookings(String type)
     {
-        Set<Booking> set=new HashSet<>();
+        List<Booking> set=new LinkedList<>();
         int account=currentCustomer.getAccount();
         Iterator itr=null;
         if(type.equalsIgnoreCase("room"))
@@ -347,7 +264,7 @@ public final class HotelBooker {
         return null;
     }
     
-    private void commitBooking(int bookingNo, Date start, Date end, RoomBooking booking, int occupants)
+    private void commitRoomBooking(int bookingNo, Date start, Date end, RoomBooking booking, int occupants)
     {
         PreparedStatement statement;
         try {
@@ -367,6 +284,111 @@ public final class HotelBooker {
             statement.setBoolean(1, true);
             statement.setInt(2, currentRoom.getRoomNo());
             statement.executeUpdate();
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+    }
+    
+    private void commitNewRestBooking(int bookingNo, Date date, String time)
+    {
+        PreparedStatement statement;
+        try {
+            statement=conn.prepareStatement("INSERT INTO RESTAURANT_BOOKINGS VALUES (?, ?, ?, ?)");
+            statement.setInt(1, bookingNo);
+            statement.setInt(2, currentCustomer.getAccount());
+            statement.setDate(3, date);
+            statement.setString(4, time);
+            statement.executeUpdate();
+            statement.close();
+        } catch (SQLException ex) {
+            Logger.getLogger(HotelBooker.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private void loadRooms()
+    {
+        Statement statement;
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM ROOMS");
+            while(rs.next())
+            {
+                int roomNo=rs.getInt("roomNo");
+                String type=rs.getString("type");
+                boolean status=rs.getBoolean("bookingstatus");
+                int price=rs.getInt("price");
+                if(type.equalsIgnoreCase("single"))
+                    hotel.getRoomList().add(new Single(roomNo, price, status));
+                else if(type.equalsIgnoreCase("double"))
+                    hotel.getRoomList().add(new Double(roomNo, price, status));
+                else if(type.equals("suite"))
+                    hotel.getRoomList().add(new Suite(roomNo, price, status));
+            }
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+    }
+    
+    private void loadCustomers()
+    {
+        Statement statement;
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM CUSTOMERS");
+            while(rs.next())
+            {
+                int account=rs.getInt("custno");
+                String name=rs.getString("name");
+                String email=rs.getString("email");
+                String phone=rs.getString("phoneno");
+                hotel.getCustomerList().add(new Customer(account, name, email, phone));
+            }
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+    }
+    
+    private void loadRoomBookings()
+    {
+        Statement statement;
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM ROOM_BOOKINGS");
+            while(rs.next())
+            {
+                int bookingNo=rs.getInt("bookingno");
+                int customerNo=rs.getInt("custno");
+                int roomNo=rs.getInt("roomno");
+                Date date=rs.getDate("date");
+                Date departure=rs.getDate("departure");
+                int price=rs.getInt("price");
+                int occupants=rs.getInt("occupants");
+                long duration=rs.getLong("duration");
+                hotel.getRoomBookList().add(new RoomBooking(bookingNo, customerNo, roomNo, date, departure, price, occupants, duration));
+            }
+            statement.close();
+        } catch (SQLException ex) {
+            System.out.println("SQLException: "+ex.getMessage());
+        }
+    }
+    
+    private void loadRestBookings()
+    {
+        Statement statement;
+        try {
+            statement=conn.createStatement();
+            ResultSet rs=statement.executeQuery("SELECT * FROM RESTAURANT_BOOKINGS");
+            while(rs.next())
+            {
+                int bookingNo=rs.getInt("bookingno");
+                int customerNo=rs.getInt("custno");
+                Date date=rs.getDate("date");
+                String time=rs.getString("time");
+                hotel.getRestBookList().add(new RestaurantBooking(bookingNo, customerNo, date, time));
+            }
             statement.close();
         } catch (SQLException ex) {
             System.out.println("SQLException: "+ex.getMessage());

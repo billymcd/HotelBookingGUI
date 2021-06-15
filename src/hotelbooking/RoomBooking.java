@@ -17,10 +17,10 @@ public class RoomBooking extends Booking {
     private Date departure;
     private long duration;
     
-    public RoomBooking(int bookingNo, int customerNo, int roomNo, Date date) // Constructor initialises variables 
+    public RoomBooking(int bookingNo, int customerNo, int roomNo, Date date)
     {
-        super(bookingNo, customerNo, date); // Room created according to room constructor
-        this.roomNo=roomNo; // Room number set as corresponding input parameter
+        super(bookingNo, customerNo, date);
+        this.roomNo=roomNo;
     }
     
     public RoomBooking(int bookingNo, int customerNo, int roomNo, Date date, Date departure, int price, int occupants, long duration)

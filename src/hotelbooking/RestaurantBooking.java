@@ -14,19 +14,19 @@ import java.sql.Date;
 public class RestaurantBooking extends Booking { //**********
     private final String time;
     
-    public RestaurantBooking(int bookingNo, int customerNo, Date date, String time) // Constructor initialises variables 
+    public RestaurantBooking(int bookingNo, int customerNo, Date date, String time)
     {
-        super(bookingNo, customerNo, date); // Booking created according to booking constructor
-        this.time=time; // Restaurant booking time set as corresponding input parameter
+        super(bookingNo, customerNo, date);
+        this.time=time;
     }
     
-    public String getTime() // Function allows access to private variable
+    public String getTime()
     {
         return time;
     }
 
     @Override
-    public String toString() // Function prints details of restaurant booking
+    public String toString()
     {
         String bString="Booking Number: "+bookingNo+"\nCustomer Number: "
                 +customerNo+"\nDate: "+date+" at "+time+"hrs";

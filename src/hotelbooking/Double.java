@@ -11,10 +11,10 @@ package hotelbooking;
  */
 public class Double extends Room {
     
-    public Double(int roomNo) // Constructor for a double room
+    public Double(int roomNo)
     {
-        super(roomNo); // Room created according to room constructor
-        this.price=175; // Price for double room is $175
+        super(roomNo);
+        this.price=175;
     }
     
     public Double(int roomNo, int price, boolean booked)
@@ -23,7 +23,7 @@ public class Double extends Room {
     }
     
     @Override
-    public String toString() // Function prints details of double room
+    public String toString()
     {
         String roomString;
         roomString="Room no: "+roomNo+"\nRoom type: Double\nStatus: "+status;
