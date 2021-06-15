@@ -153,7 +153,8 @@ public class HotelBookingGUI extends JPanel
             }
             if(e.getSource().equals(acceptRest))
             {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                createRestBooking();
+                repaint();
             }
         }
     }
@@ -210,7 +211,8 @@ public class HotelBookingGUI extends JPanel
                 }
             }
             if(e.getSource().equals(timePicker))
-                time=(String)timePicker.getSelectedItem();
+                if(e.getStateChange()==ItemEvent.SELECTED)
+                    time=timePicker.getSelectedItem().toString();
         }
     }
     
@@ -302,8 +304,10 @@ public class HotelBookingGUI extends JPanel
         eCustPanel.setLayout(layout);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
-        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(email).addComponent(emailField)).addComponent(loginButton));
-        layout.setVerticalGroup(layout.createSequentialGroup().addComponent(email).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(emailField).addComponent(loginButton)));
+        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                .addComponent(email).addComponent(emailField)).addComponent(loginButton));
+        layout.setVerticalGroup(layout.createSequentialGroup().addComponent(email).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(emailField).addComponent(loginButton)));
     }
     
     private void newCustomer()
@@ -320,8 +324,13 @@ public class HotelBookingGUI extends JPanel
         newCustPanel.setLayout(layout);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
-        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(name).addComponent(nameField).addComponent(acceptCust)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(email).addComponent(newEmailField)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(phone).addComponent(phoneField)));
-        layout.setVerticalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(name).addComponent(email).addComponent(phone)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(nameField).addComponent(newEmailField).addComponent(phoneField)).addComponent(acceptCust));
+        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                .addComponent(name).addComponent(nameField).addComponent(acceptCust)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addComponent(email).addComponent(newEmailField)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                                .addComponent(phone).addComponent(phoneField)));
+        layout.setVerticalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                .addComponent(name).addComponent(email).addComponent(phone)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                        .addComponent(nameField).addComponent(newEmailField).addComponent(phoneField)).addComponent(acceptCust));
     }
     
     private void bookings()
@@ -381,6 +390,7 @@ public class HotelBookingGUI extends JPanel
         restBooking=new JPanel();
         String[] times=setupTimes(1100, 2300);
         timePicker=new JComboBox(times);
+        timePicker.setSelectedIndex(-1);
         timePicker.addItemListener(cbListener);
         datePicker=new JDatePickerImpl(datePanel, new DateLabelFormatter());
         restBooking.add(new JLabel("Date: "));
@@ -421,15 +431,11 @@ public class HotelBookingGUI extends JPanel
         bookingDetails=new JTextField();
         bookingDetails.setEditable(false);
         JTabbedPane enquiryPanels=new JTabbedPane();
-        JPanel bot=new JPanel();
         JLabel label=new JLabel("Booking details:");
         label.setHorizontalAlignment(SwingConstants.CENTER);
-        bot.add(label);
-        bot.add(bookingDetails);
         enquiryPanels.add("Room Bookings", new JScrollPane(roomList));
         enquiryPanels.add("Restaurant Bookings", new JScrollPane(restList));
         enquiryPanel.add(enquiryPanels, BorderLayout.NORTH);
-//        enquiryPanel.add(bot, BorderLayout.SOUTH);
         enquiryPanel.add(label, BorderLayout.CENTER);
         enquiryPanel.add(bookingDetails, BorderLayout.SOUTH);
         
@@ -462,6 +468,7 @@ public class HotelBookingGUI extends JPanel
             model=roomListModel;
         else
             model=restListModel;
+        model.clear();
         for(Booking booking : bookings)
             model.addElement(booking);
     }
@@ -535,12 +542,23 @@ public class HotelBookingGUI extends JPanel
                     +"details and try again.", "Booking failed", JOptionPane.WARNING_MESSAGE);
         else
         {
-            login();
             startPicker.getModel().setSelected(false);
             departPicker.getModel().setSelected(false);
             occupants.setText("");
             roomPicker.setSelectedIndex(-1);
+            login();
+            updateCentralPanel(enquiryPanel);
         }
+    }
+    
+    private void createRestBooking()
+    {
+        Date date=(Date)datePicker.getModel().getValue();
+        hotBook.createRestaurantBooking(date, time);
+        datePicker.getModel().setSelected(false);
+        timePicker.setSelectedIndex(-1);
+        login();
+        updateCentralPanel(enquiryPanel);
     }
     
     public class DateLabelFormatter extends AbstractFormatter 

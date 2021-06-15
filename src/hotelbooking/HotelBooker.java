@@ -13,12 +13,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.HashSet;
-import java.util.InputMismatchException;
 import java.util.Iterator;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,9 +27,7 @@ import java.util.logging.Logger;
 public final class HotelBooker {
     public final Hotel hotel;
     public Customer currentCustomer;
-    private String response;
     private Room currentRoom;
-    private Booking currentBooking;
     private Connection conn=null;
 
     public HotelBooker(String name, String location, int rating)
@@ -65,7 +60,7 @@ public final class HotelBooker {
                 statement.setInt(1, cust.getAccount());
                 statement.setString(2, cust.getName());
                 statement.setString(3, cust.getEmail());
-                statement.setLong(4, cust.getPhone());
+                statement.setString(4, cust.getPhone());
                 statement.executeUpdate();
                 statement.close();
             } catch (SQLException ex) {
@@ -94,17 +89,17 @@ public final class HotelBooker {
         return false;
     }
     
-    public boolean checkAvailability(String type) // Check the availability of specified type of room
+    public boolean checkAvailability(String type)
     {
         currentRoom=null;
         boolean available=false;
-        Iterator itr=hotel.getRoomList().iterator(); // Initialise iterator to look through room list
+        Iterator itr=hotel.getRoomList().iterator();
         if(type.equalsIgnoreCase("single"))
         {
-            while(itr.hasNext()&&available==false) // Look through room list
+            while(itr.hasNext()&&available==false)
             {
                 Room room=(Room)itr.next();
-                if(room instanceof Single && room.getBookingStatus()==false) // If single room and available, set room as current room
+                if(room instanceof Single && room.getBookingStatus()==false)
                 {
                     available=true;
                     currentRoom=room;
@@ -113,10 +108,10 @@ public final class HotelBooker {
         }
         else if(type.equalsIgnoreCase("double"))
         {
-            while(itr.hasNext()&&available==false) // Look through room list
+            while(itr.hasNext()&&available==false)
             {
                 Room room=(Room)itr.next();
-                if(room instanceof Double && room.getBookingStatus()==false) // If double room and available, set room as current room 
+                if(room instanceof Double && room.getBookingStatus()==false)
                 {
                     available=true;
                     currentRoom=room;
@@ -125,20 +120,20 @@ public final class HotelBooker {
         }
         else if(type.equalsIgnoreCase("suite"))
         {
-            while(itr.hasNext()&&available==false) // Look through room list
+            while(itr.hasNext()&&available==false)
             {
                 Room room=(Room)itr.next();
-                if(room instanceof Suite && room.getBookingStatus()==false) // If suite room and available, set room as current room
+                if(room instanceof Suite && room.getBookingStatus()==false)
                 {
                     available=true;
                     currentRoom=room;
                 }
             }
         }
-        return available; // Return availability status
+        return available;
     }
     
-    public boolean createRoomBooking(Date start, Date end, String type, String occupants) // Create a room booking
+    public boolean createRoomBooking(Date start, Date end, String type, String occupants)
     {
         int bookingNo;
         int occ;
@@ -169,150 +164,33 @@ public final class HotelBooker {
         commitBooking(bookingNo, start, end, newBook, occ);
         return true;
     }
-    
-    public int restaurantBookingDetails()
+        
+    public RestaurantBooking createRestaurantBooking(Date date, String time)
     {
-        RestaurantBooking booking=createRestaurantBooking(currentCustomer.getAccount()); // Create new restaurant booking
-        System.out.println("\nBooking successful!");
-        System.out.println("-------------------");
-        System.out.println(booking.toString()); // Print restaurant booking details
-        System.out.println("");
-        return 0;
-    }
-    
-    public RestaurantBooking createRestaurantBooking(int customerNo) // Create a restaurant booking
-    {
-        Scanner scan = new Scanner(System.in);
-        int bookingNo=0;
-        String dateS;
-        int time=0;
-        Date date=Date.valueOf("2000-1-1"); // Set date to 1 January 2000
+        int bookingNo;
         Set<Booking> bList=hotel.getRestBookList(); 
         
-        if(bList.isEmpty()) // If no restaurant bookings in restaurant booking list hashset, next restaurant booking number is 1
+        if(bList.isEmpty())
             bookingNo=1; 
         else
-            bookingNo=bList.size()+1; // If restaurant bookings in the restaurant booking list hashset, next restaurant booking number is 1 more than last
-        
-        while(date.before(Calendar.getInstance().getTime())) // While booking date is before current date, enter sequence
-        {
-            System.out.print("What date would you like the booking for? (YYYY-MM-DD) ");
-            dateS=scan.next(); // Scan user input
-            try{
-                date=Date.valueOf(dateS); // Try to get the user input as a valid date
-            }catch(DateTimeParseException e){
-                System.out.println("Please enter a valid date."); // Print if date invalid
-                dateS="";
-            }
-            if(date.before(Calendar.getInstance().getTime())&&!dateS.isEmpty()) // If date before current date entered
-                System.out.println("Date must not be earlier than today's date.");
-        }
-        
-        while(time<1100||time>2300) // While time earlier than 11 am or later than 11 pm, enter sequence
-        {
-            System.out.print("What time would you like to book for? (24hr format) ");
-            try{
-                time=scan.nextInt(); // Scan user input
-            }catch(InputMismatchException e){
-                System.out.println("Invalid input, please try again."); // Print if whole number not entered //****
-            }
-            if(time<1100||time>2300) // If time earlier than 11 am or later than 11 pm, prompt user to enter time again
-                System.out.println("We accept bookings between 1100-2300, please"
-                        + " enter a valid time. ");
-        }
-        RestaurantBooking newBook=new RestaurantBooking(bookingNo, customerNo, date, time); // Create restaurant booking from the information
-        //*** Add other things like end of room booking?
+            bookingNo=bList.size()+1;
+        RestaurantBooking newBook=new RestaurantBooking(bookingNo, currentCustomer.getAccount(), date, time);
         hotel.addBooking(newBook);
         
         PreparedStatement statement;
         try {
             statement=conn.prepareStatement("INSERT INTO RESTAURANT_BOOKINGS VALUES (?, ?, ?, ?)");
             statement.setInt(1, bookingNo);
-            statement.setInt(2, customerNo);
+            statement.setInt(2, currentCustomer.getAccount());
             statement.setDate(3, date);
-            statement.setInt(4, time);
+            statement.setString(4, time);
             statement.executeUpdate();
             statement.close();
         } catch (SQLException ex) {
             Logger.getLogger(HotelBooker.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        return newBook; // Return restaurant booking created
-    }
-    
-    public int bookingEnquiry(int enquiry, int custNo)
-    {
-        int completed=0;
-        Iterator itr;
-        int bookingCount=0;
-        switch(enquiry)
-        {
-            case 1:
-                bookingCount=0;
-                Set<Booking> roomList=hotel.getRoomBookList();
-                itr=roomList.iterator();
-                while(itr.hasNext())
-                {
-                    Object element=itr.next();
-                    RoomBooking book=(RoomBooking)element;
-                    if(book.getCustomer()==custNo)
-                    {
-                        System.out.println(book.toString());
-                        bookingCount++;
-                        System.out.println("");
-                    }
-                }
-                switch (bookingCount) 
-                {
-                    case 0:
-                        System.out.println("No room bookings found.\n");
-                        break;
-                    case 1:
-                        System.out.println("You have 1 room booking with us.\n");
-                        break;
-                    default:
-                        System.out.println("You have "+bookingCount+" room bookings with us.\n");
-                        break;
-                }
-                break;
-            case 2:
-                bookingCount=0;
-                Set<Booking> restList=hotel.getRestBookList();
-                itr=restList.iterator();
-                while(itr.hasNext())
-                {
-                    Object element=itr.next();
-                    RestaurantBooking book=(RestaurantBooking)element;
-                    if(book.getCustomer()==custNo)
-                    {
-                        System.out.println(book.toString());
-                        bookingCount++;
-                        System.out.println("");
-                    }
-                }
-                switch (bookingCount) 
-                {
-                    case 0:
-                        System.out.println("No restaurant bookings found.");
-                        break;
-                    case 1:
-                        System.out.println("You have 1 restaurant booking with us.");
-                        break;
-                    default:
-                        System.out.println("You have "+bookingCount+" restaurant bookings with us.");
-                        break;
-                }
-                break;
-            case 3:
-                bookingEnquiry(1, custNo);
-                bookingEnquiry(2, custNo);
-                break;
-            case 4:
-                break;
-            default:
-                completed=3;
-        }
-        return completed;
+        return newBook;
     }
     
     //Run on start up to load all saved data from the database
@@ -341,7 +219,7 @@ public final class HotelBooker {
         } catch (SQLException ex) {
             System.out.println("SQLException: "+ex.getMessage());
         }
-        //If there were no rooms to load, run method to populate the set
+        
         if(hotel.getRoomList().isEmpty())
         {
             System.out.println("Initialising first time setup.");
@@ -356,7 +234,7 @@ public final class HotelBooker {
                 int account=rs.getInt("custno");
                 String name=rs.getString("name");
                 String email=rs.getString("email");
-                int phone=rs.getInt("phoneno");
+                String phone=rs.getString("phoneno");
                 hotel.getCustomerList().add(new Customer(account, name, email, phone));
             }
             statement.close();
@@ -392,19 +270,19 @@ public final class HotelBooker {
                 int bookingNo=rs.getInt("bookingno");
                 int customerNo=rs.getInt("custno");
                 Date date=rs.getDate("date");
-                int time=rs.getInt("time");
+                String time=rs.getString("time");
                 hotel.getRestBookList().add(new RestaurantBooking(bookingNo, customerNo, date, time));
             }
             statement.close();
         } catch (SQLException ex) {
             System.out.println("SQLException: "+ex.getMessage());
         }
-        return loaded; // Return loaded variable
+        return loaded;
     }
     
+    //establishes connection to the database, creates the tables if they don't already exist
     private void dbSetup()
     {
-        //establishes connection to the database, creates the tables if they don't already exist
         String url="jdbc:derby:PDCHotel;create=true";
         try {
             conn=DriverManager.getConnection(url, "vsf2319", "Hotel123");
@@ -413,24 +291,24 @@ public final class HotelBooker {
                 statement.execute("CREATE TABLE rooms (roomno INT NOT NULL, type VARCHAR(10),"
                         + " bookingstatus BOOLEAN, price INT, PRIMARY KEY (roomno))");
             if(!tableCheck("customers"))
-                statement.execute("CREATE TABLE customers (custno INT NOT NULL, name VARCHAR(25),"
-                        + " email VARCHAR(50), phoneno BIGINT, PRIMARY KEY (custno))");
+                statement.execute("CREATE TABLE customers (custno INT NOT NULL, name VARCHAR(50),"
+                        + " email VARCHAR(50), phoneno VARCHAR(15), PRIMARY KEY (custno))");
             if(!tableCheck("room_bookings"))
                 statement.execute("CREATE TABLE room_bookings (bookingno INT NOT NULL, custno INT,"
                         + " roomno INT, date DATE, departure DATE, price INT, occupants INT,"
                         + " duration BIGINT, PRIMARY KEY (bookingno))");
             if(!tableCheck("restaurant_bookings"))
                 statement.execute("CREATE TABLE restaurant_bookings (bookingno INT NOT NULL,"
-                        + " custno INT, date DATE, time INT, PRIMARY KEY (bookingno))");
+                        + " custno INT, date DATE, time VARCHAR(5), PRIMARY KEY (bookingno))");
             statement.close();
         } catch (SQLException ex) {
             System.out.println("SQLException: "+ex.getMessage());
         }
     }
     
+    //helper method to create tables during initial db setup
     private boolean tableCheck(String table)
     {
-        //helper method to create tables during initial db setup
         boolean exists=false;
         try {
             DatabaseMetaData dbmd=conn.getMetaData();
