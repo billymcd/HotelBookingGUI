@@ -11,10 +11,10 @@ package hotelbooking;
  */
 public class Suite extends Room {
     
-    public Suite(int roomNo) // Constructor for a suite room
+    public Suite(int roomNo)
     {
-        super(roomNo); // Room created according to room constructor
-        this.price=250; // Price for suite room is $250
+        super(roomNo);
+        this.price=250;
     }
     
     public Suite(int roomNo, int price, boolean booked)
@@ -23,7 +23,7 @@ public class Suite extends Room {
     }
     
     @Override
-    public String toString() // Function prints details of suite room
+    public String toString()
     {
         String roomString;
         roomString="Room no: "+roomNo+"\nRoom type: Suite\nStatus: "+status;

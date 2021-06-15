@@ -105,44 +105,44 @@ public class Hotel {
         return cust;
     }
     
-    public Set<Customer> getCustomerList() // Function allows access to private variable
+    public Set<Customer> getCustomerList()
     {
         return customerList;
     }
     
-    public void addBooking(Booking newBooking) // Add booking specified to corresponding hashset
+    public void addBooking(Booking newBooking)
     {
-        if(newBooking instanceof RoomBooking) // Add room booking to room booking hashset
+        if(newBooking instanceof RoomBooking)
             roomBookList.add((RoomBooking)newBooking);
-        if(newBooking instanceof RestaurantBooking) // Add restaurant booking to restaurant booking hashset
+        if(newBooking instanceof RestaurantBooking)
             restBookList.add((RestaurantBooking)newBooking);
     }
     
-    public Set<Booking> getRoomBookList() // Function allows access to private variable
+    public Set<Booking> getRoomBookList()
     {
         return roomBookList;
     }
     
-    public Set<Booking> getRestBookList() // Function allows access to private variable
+    public Set<Booking> getRestBookList()
     {
         return restBookList;
     }
     
     public static boolean emailIsValid(String email)
     {
-        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\."+"[a-zA-Z0-9_+&*-]+)*@"+
+        String emailRegex="^[a-zA-Z0-9_+&*-]+(?:\\."+"[a-zA-Z0-9_+&*-]+)*@"+
                 "(?:[a-zA-Z0-9-]+\\.)+[a-z"+"A-Z]{2,7}$";                     
-        Pattern pat = Pattern.compile(emailRegex);
-        if (email == null)
+        Pattern pat=Pattern.compile(emailRegex);
+        if (email==null)
             return false;
         return pat.matcher(email).matches();
     }
     
     public static boolean phoneNumberIsValid(String phoneNo)
     {
-        String phoneNoRegex = "^[0-9]*$";                     
-        Pattern pat = Pattern.compile(phoneNoRegex);
-        if (phoneNo == null)
+        String phoneNoRegex="^[0-9]*$";                     
+        Pattern pat=Pattern.compile(phoneNoRegex);
+        if (phoneNo==null)
             return false;
         return pat.matcher(phoneNo).matches();
     }

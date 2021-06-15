@@ -16,9 +16,11 @@ import java.awt.event.ItemListener;
 import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
@@ -27,15 +29,15 @@ import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField.AbstractFormatter;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableRowSorter;
 import org.jdatepicker.impl.JDatePanelImpl;
 import org.jdatepicker.impl.JDatePickerImpl;
 import org.jdatepicker.impl.SqlDateModel;
@@ -61,12 +63,12 @@ public class HotelBookingGUI extends JPanel
     private JLabel welcomeMessage;
     private JDatePanelImpl datePanel, startPanel, departPanel;
     private JDatePickerImpl datePicker, startPicker, departPicker;
-    private JList roomList, restList;
+    private BookingTableModel model;
+    private JTable bookings;
     private DefaultListModel roomListModel, restListModel;
     private String welcome, cust, roomType, time;
     private ButtonListener bListener;
-    private Set<Booking> restBookings, roomBookings;
-    private ListListener lListener;
+    private List<Booking> restBookings, roomBookings;
     private ImageIcon welcomePic;
     private JTabbedPane centralBooking;
     private JComboBox roomPicker, timePicker;
@@ -76,11 +78,8 @@ public class HotelBookingGUI extends JPanel
     {
         super(new BorderLayout());
         hotBook=new HotelBooker("PDC Hotel", "Auckland", 5);
-        
         setupButtons();
         setupPanels();
-        
-        //adding subpanels to primary panel
         add(centralPanel, BorderLayout.CENTER);
         add(southPanel, BorderLayout.SOUTH);
         add(northPanel, BorderLayout.NORTH);
@@ -100,7 +99,7 @@ public class HotelBookingGUI extends JPanel
         frame.setLocation(new Point((screenWidth/2)-(frame.getWidth()/2),(screenHeight/2)-(frame.getHeight()/2)));
         frame.setVisible(true);
     }
-    
+    //listener for all the buttons, invoking helper methods to shrink the class size considerably
     private class ButtonListener implements ActionListener
     {
         @Override
@@ -137,9 +136,6 @@ public class HotelBookingGUI extends JPanel
             {
                 updateCentralPanel(enquiryPanel);
                 repaint();
-//                System.out.println(roomList);
-//                String[] s=(String[])restList.getSelectedValues();
-//                System.out.println(s[0]);
             }
             if(e.getSource().equals(acceptCust))
             {
@@ -158,39 +154,6 @@ public class HotelBookingGUI extends JPanel
             }
         }
     }
-    
-    private class ListListener implements ListSelectionListener
-            {
-      public void valueChanged(ListSelectionEvent listSelectionEvent) {
-        System.out.println("First index: " + listSelectionEvent.getFirstIndex());
-        System.out.println(", Last index: " + listSelectionEvent.getLastIndex());
-        boolean adjust = listSelectionEvent.getValueIsAdjusting();
-        System.out.println(", Adjusting? " + adjust);
-        if (!adjust) {
-          JList list = (JList) listSelectionEvent.getSource();
-          int selections[] = list.getSelectedIndices();
-          Object selectionValues[] = list.getSelectedValues();
-          for (int i = 0, n = selections.length; i < n; i++) {
-            if (i == 0) {
-              System.out.println(" Selections: ");
-            }
-            System.out.println(selections[i] + "/" + selectionValues[i] + " ");
-          }
-        }
-      }
-    }
-//    {
-//        @Override
-//        public void valueChanged(ListSelectionEvent e) 
-//        {
-//            if(e.getSource().equals(roomList))
-//            {
-//                System.out.println("click");
-//                String selection=(String)roomList.getSelectedValue();
-//                System.out.println(selection);
-//            }
-//        }
-//    }
     
     private class ComboBoxListener implements ItemListener
     {
@@ -215,7 +178,7 @@ public class HotelBookingGUI extends JPanel
                     time=timePicker.getSelectedItem().toString();
         }
     }
-    
+    //method to change the buttons after logout
     private void buttonChanger(JButton button1, JButton button2, JButton button3)
     {
         southPanel.removeAll();
@@ -224,21 +187,21 @@ public class HotelBookingGUI extends JPanel
         southPanel.add(button3);
         southPanel.validate();
     }
-    
+    //same as above but for login
     private void buttonChanger(JButton button1, JButton button2, JButton button3, JButton button4)
     {
         buttonChanger(button1, button2, button3);
         southPanel.add(button4);
         southPanel.validate();
     }
-    
+    //change panel displayed in center based on selections
     private void updateCentralPanel(JPanel panel)
     {
         centralPanel.removeAll();
         centralPanel.add(panel);
         centralPanel.validate();
     }
-    
+    //method to set up all the buttons and their listeners
     private void setupButtons()
     {
         bListener=new ButtonListener();
@@ -263,7 +226,7 @@ public class HotelBookingGUI extends JPanel
         acceptCust=new JButton("Accept");
         acceptCust.addActionListener(bListener);
     }
-    
+    //calls methods to set up each of the main panels
     private void setupPanels()
     {
         topPanel();
@@ -346,21 +309,21 @@ public class HotelBookingGUI extends JPanel
         centralBooking.addTab("Restaurant Booking", restBooking);
         bookingPanel.add(centralBooking);
     }
-    
+    //setup for the date panels used for making bookings
     private void setupDatePanels()
     {
-        SqlDateModel model=new SqlDateModel();
+        SqlDateModel model1=new SqlDateModel();
         SqlDateModel model2=new SqlDateModel();
         SqlDateModel model3=new SqlDateModel();
         Properties p=new Properties();
         p.put("text.today", "Today");
         p.put("text.month", "Month");
         p.put("text.year", "Year");
-        datePanel=new JDatePanelImpl(model, p);
+        datePanel=new JDatePanelImpl(model1, p);
         startPanel=new JDatePanelImpl(model2, p);
         departPanel=new JDatePanelImpl(model3, p);
     }
-    
+    //room booking panel setup
     private void roomPanel()
     {
         roomBooking=new JPanel(new BorderLayout());
@@ -384,7 +347,7 @@ public class HotelBookingGUI extends JPanel
         bot.add(acceptRoom);
         roomBooking.add(bot);
     }
-    
+    //restaurant booking panel setup
     private void restPanel()
     {
         restBooking=new JPanel();
@@ -399,7 +362,7 @@ public class HotelBookingGUI extends JPanel
         restBooking.add(timePicker);
         restBooking.add(acceptRest);
     }
-    
+    //helper method to setup an array of strings representing times for restaurant bookings
     private String[] setupTimes(int open, int close)
     {
         int totalOpen=close-open;
@@ -426,31 +389,14 @@ public class HotelBookingGUI extends JPanel
     
     private void enquiryPanel()
     {
-        setupLists();
-        enquiryPanel=new JPanel(new BorderLayout());
+        tableSetup();
+        enquiryPanel=new JPanel();
         bookingDetails=new JTextField();
         bookingDetails.setEditable(false);
-        JTabbedPane enquiryPanels=new JTabbedPane();
+        bookingDetails.setSize(250, 100);
         JLabel label=new JLabel("Booking details:");
         label.setHorizontalAlignment(SwingConstants.CENTER);
-        enquiryPanels.add("Room Bookings", new JScrollPane(roomList));
-        enquiryPanels.add("Restaurant Bookings", new JScrollPane(restList));
-        enquiryPanel.add(enquiryPanels, BorderLayout.NORTH);
-        enquiryPanel.add(label, BorderLayout.CENTER);
-        enquiryPanel.add(bookingDetails, BorderLayout.SOUTH);
-        
-    }
-    
-    private void setupLists()
-    {
-        roomListModel=new DefaultListModel();
-        roomList=new JList(roomListModel);
-        roomList.addListSelectionListener(lListener);
-        roomList.setPreferredSize(new Dimension(250, 100));
-        restListModel=new DefaultListModel();
-        restList=new JList(restListModel);
-        restList.addListSelectionListener(lListener);
-        restList.setPreferredSize(new Dimension(250, 100));
+        enquiryPanel.add(new JScrollPane(bookings));
     }
     
     private void buttonPanel()
@@ -460,19 +406,7 @@ public class HotelBookingGUI extends JPanel
         southPanel.add(existingCustButton);
         southPanel.add(exitButton);
     }
-    
-    private void loadList(Set<Booking> bookings, JList list)
-    {
-        DefaultListModel model;
-        if(list.equals(roomList))
-            model=roomListModel;
-        else
-            model=restListModel;
-        model.clear();
-        for(Booking booking : bookings)
-            model.addElement(booking);
-    }
-    
+    //set of actions to take when a customer logs out; ie resetting all the fields etc.
     private void logout()
     {
         hotBook.currentCustomer=null;
@@ -486,7 +420,7 @@ public class HotelBookingGUI extends JPanel
         roomListModel.clear();
         restListModel.clear();
     }
-    
+    //load a returning customer
     private void loadCustomer()
     {
         String email=emailField.getText();
@@ -500,7 +434,7 @@ public class HotelBookingGUI extends JPanel
             emailField.setText("");
         }
     }
-    
+    //create a new customer
     private void createCustomer()
     {
         String name=nameField.getText();
@@ -518,7 +452,7 @@ public class HotelBookingGUI extends JPanel
             phoneField.setText("");
         }
     }
-    
+    //actions to take on login, ie ensuring all fields are set for the current customer
     private void login()
     {
         updateCentralPanel(welcomePanel);
@@ -527,8 +461,9 @@ public class HotelBookingGUI extends JPanel
         welcomeMessage.setText(cust);
         restBookings=hotBook.currentCustBookings("rest");
         roomBookings=hotBook.currentCustBookings("room");
-        loadList(roomBookings, roomList);
-        loadList(restBookings, restList);
+        model.removeAll();
+        model.add(roomBookings);
+        model.add(restBookings);
     }
     
     private void createRoomBooking()
@@ -560,7 +495,7 @@ public class HotelBookingGUI extends JPanel
         login();
         updateCentralPanel(enquiryPanel);
     }
-    
+    //formatter class for JDatePicker
     public class DateLabelFormatter extends AbstractFormatter 
     {
         private String datePattern = "yyyy-MM-dd";
@@ -582,5 +517,96 @@ public class HotelBookingGUI extends JPanel
             }
             return "";
         }
+    }
+    //class to set a model for the table displaying customers bookings
+    public static class BookingTableModel extends AbstractTableModel {
+
+        protected static final String[] COLUMN_NAMES = {"Booking #", "Date", "Type", "Cost", "Time"};
+
+        private List<Booking> rowData;
+
+        public BookingTableModel() {
+            rowData = new ArrayList<>(25);
+        }
+
+        public void add(Booking... booking) {
+            add(Arrays.asList(booking));
+        }
+
+        public void add(List<Booking> booking) {
+            rowData.addAll(booking);
+            fireTableDataChanged();
+        }
+        
+        public void removeAll()
+        {
+            rowData.clear();
+        }
+
+        @Override
+        public int getRowCount() {
+            return rowData.size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return COLUMN_NAMES.length;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return COLUMN_NAMES[column];
+        }
+
+        public Booking getBookingAt(int row) {
+            return rowData.get(row);
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            Booking booking = getBookingAt(rowIndex);
+            Object value = null;
+            switch (columnIndex) {
+                case 0:
+                    value = booking.getBookingNo();
+                    break;
+                case 1:
+                    value = booking.getDate();
+                    break;
+                case 2:
+                    if(booking instanceof RoomBooking)
+                        value = "Room";
+                    if(booking instanceof RestaurantBooking)
+                        value = "Restaurant";
+                    break;
+                case 3:
+                    if(booking instanceof RoomBooking)
+                        value = ((RoomBooking)booking).getPrice();
+                    else
+                        value = "-";
+                    break;
+                case 4:
+                    if(booking instanceof RestaurantBooking)
+                        value = ((RestaurantBooking) booking).getTime();
+                    else
+                        value = "-";
+                    break;
+            }
+            return value;
+        }
+    }
+    //set up the bookings enquiry table
+    private void tableSetup()
+    {
+        model=new BookingTableModel();
+        bookings = new JTable(model);
+        bookings.setShowGrid(false);
+        bookings.setShowHorizontalLines(false);
+        bookings.setShowVerticalLines(false);
+        bookings.setRowMargin(0);
+        bookings.setIntercellSpacing(new Dimension(0, 0));
+        bookings.setFillsViewportHeight(true);
+        TableRowSorter<BookingTableModel> sorter = new TableRowSorter<>(model);
+        bookings.setRowSorter(sorter);
     }
 }

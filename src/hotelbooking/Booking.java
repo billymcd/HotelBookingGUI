@@ -15,19 +15,19 @@ public abstract class Booking {
     protected int bookingNo, customerNo;
     protected Date date;
     
-    public Booking(int bookingNo, int customerNo, Date date) // Constructor initialises variables
+    public Booking(int bookingNo, int customerNo, Date date)
     {
         this.bookingNo=bookingNo;
         this.customerNo=customerNo;
         this.date=date;
     }
     
-    public void setDate(Date date) // Function allows user to change protected variable
+    public void setDate(Date date)
     {
         this.date=date; 
     }
     
-    public Date getDate() // Function allows access to protected variable
+    public Date getDate()
     {
         return date;
     }
@@ -43,21 +43,21 @@ public abstract class Booking {
     }
     
     @Override
-    public boolean equals(Object o) // Checks if this room is equal to inputted parameter
+    public boolean equals(Object o)
     {
-        if (o==null) // If o doesn't refer to an object, this room doesn't equal o
+        if (o==null)
         {
             return false;
         }
-        if (!(o instanceof Booking)) //If o isn't a room object, this room doesn't equal o
+        if (!(o instanceof Booking))
         {
             return false;
         }
         Booking other=(Booking)o;
-        return (this.bookingNo==other.bookingNo); // Check if this room equals inputted room (by checking if room number is the same), and return answer
+        return (this.bookingNo==other.bookingNo);
     }
     @Override
-    public int hashCode() // Assign a different hashcode for every room
+    public int hashCode()
     {
         int hashCode = 1;
         hashCode = 180 * hashCode + this.bookingNo;
@@ -65,5 +65,5 @@ public abstract class Booking {
     }
     
     @Override
-    public abstract String toString(); // Child classes print different things
+    public abstract String toString();
 }

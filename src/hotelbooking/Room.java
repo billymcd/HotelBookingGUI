@@ -14,7 +14,7 @@ public abstract class Room {
     protected int roomNo, price;
     protected String status;
     
-    public Room(int roomNo) // Constructor initialises variables
+    public Room(int roomNo)
     {
         this.booked=false;
         this.status="Available";
@@ -28,25 +28,25 @@ public abstract class Room {
         this.booked=booked;
     }
     
-    public int getRoomNo() // Function allows access to protected variable
+    public int getRoomNo()
     {
         return roomNo;
     }
     
-    public int getPrice() // Function allows access to protected variable
+    public int getPrice()
     {
         return price;
     }
     
-    public boolean getBookingStatus() // Function allows access to protected variable
+    public boolean getBookingStatus()
     {
         return booked;
     }
     
-    public void setBookingStatus(boolean booked) // Function allows user to change protected variable
+    public void setBookingStatus(boolean booked)
     {
-        this.booked=booked; // Set booking status to inputted parameter
-        if(booked) // Change status to booked or available depending on input parameter
+        this.booked=booked;
+        if(booked)
         {
             status="Booked";
         }
@@ -57,21 +57,21 @@ public abstract class Room {
     }
     
     @Override
-    public boolean equals(Object o) // Checks if this room is equal to inputted parameter
+    public boolean equals(Object o)
     {
-        if (o==null) // If o doesn't refer to an object, this room doesn't equal o
+        if (o==null)
         {
             return false;
         }
-        if (!(o instanceof Room)) //If o isn't a room object, this room doesn't equal o
+        if (!(o instanceof Room))
         {
             return false;
         }
         Room other=(Room)o;
-        return (this.roomNo==other.roomNo); // Check if this room equals inputted room (by checking if room number is the same), and return answer
+        return (this.roomNo==other.roomNo);
     }
     @Override
-    public int hashCode() // Assign a different hashcode for every room
+    public int hashCode()
     {
         int hashCode = 1;
         hashCode = 180 * hashCode + this.roomNo;
@@ -79,5 +79,5 @@ public abstract class Room {
     }
     
     @Override
-    public abstract String toString(); // Child classes print different things
+    public abstract String toString();
 }
