@@ -28,8 +28,8 @@ import java.util.logging.Logger;
 public final class HotelBooker {
     public final Hotel hotel;
     public Customer currentCustomer;
-    private Room currentRoom;
-    private Connection conn=null;
+    public Room currentRoom;
+    public Connection conn=null;
 
     public HotelBooker(String name, String location, int rating)
     {
@@ -166,7 +166,7 @@ public final class HotelBooker {
         return true;
     }
         
-    public RestaurantBooking createRestaurantBooking(Date date, String time)
+    public boolean createRestaurantBooking(Date date, String time)
     {
         int bookingNo;
         Set<Booking> bList=hotel.getRestBookList(); 
@@ -176,10 +176,16 @@ public final class HotelBooker {
         else
             bookingNo=bList.size()+1;
         RestaurantBooking newBook=new RestaurantBooking(bookingNo, currentCustomer.getAccount(), date, time);
+        int initialSize=hotel.getRestBookList().size();
         hotel.addBooking(newBook);
-        
-        commitNewRestBooking(bookingNo, date, time);
-        return newBook;
+        int afterSize=hotel.getRestBookList().size();
+        if(initialSize==afterSize)
+            return false;
+        else
+        {
+            commitNewRestBooking(bookingNo, date, time);
+            return true;
+        }
     }
     
     //Run on start up to load all saved data from the database
