@@ -11,6 +11,9 @@ import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -35,7 +38,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import org.jdatepicker.impl.JDatePanelImpl;
 import org.jdatepicker.impl.JDatePickerImpl;
-import org.jdatepicker.impl.UtilDateModel;
+import org.jdatepicker.impl.SqlDateModel;
 
 //image obtained for free from the following url
 //https://www.pexels.com/photo/bedroom-door-entrance-guest-room-271639/
@@ -52,7 +55,7 @@ public class HotelBookingGUI extends JPanel
     private JPanel welcomePanel, eCustPanel, newCustPanel, bookingPanel, enquiryPanel, 
             northPanel, southPanel, centralPanel, roomBooking, restBooking;
     private JButton loginButton, exitButton, newCustomerButton, existingCustButton,
-            acceptRoom, bookingButton, enquiryButton, logoutButton, acceptRest;
+            acceptRoom, bookingButton, enquiryButton, logoutButton, acceptRest, acceptCust;
     private JTextField emailField, nameField, newEmailField, phoneField, 
             bookingDetails, occupants;
     private JLabel welcomeMessage;
@@ -62,7 +65,7 @@ public class HotelBookingGUI extends JPanel
     private DefaultListModel roomListModel, restListModel;
     private String welcome, cust, roomType, time;
     private ButtonListener bListener;
-    private Set<Booking> bookings, roomBookings;
+    private Set<Booking> restBookings, roomBookings;
     private ListListener lListener;
     private ImageIcon welcomePic;
     private JTabbedPane centralBooking;
@@ -138,9 +141,15 @@ public class HotelBookingGUI extends JPanel
 //                String[] s=(String[])restList.getSelectedValues();
 //                System.out.println(s[0]);
             }
+            if(e.getSource().equals(acceptCust))
+            {
+                createCustomer();
+                repaint();
+            }
             if(e.getSource().equals(acceptRoom))
             {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                createRoomBooking();
+                repaint();
             }
             if(e.getSource().equals(acceptRest))
             {
@@ -182,13 +191,24 @@ public class HotelBookingGUI extends JPanel
 //        }
 //    }
     
-    private class ComboBoxListener implements ActionListener
+    private class ComboBoxListener implements ItemListener
     {
         @Override
-        public void actionPerformed(ActionEvent e) 
+        public void itemStateChanged(ItemEvent e) 
         {
             if(e.getSource().equals(roomPicker))
-                roomType=(String)roomPicker.getSelectedItem();
+            {
+                if(e.getStateChange()==ItemEvent.SELECTED)
+                {
+                    roomType=roomPicker.getSelectedItem().toString();
+                    if(!hotBook.checkAvailability(roomType))
+                    {
+                        JOptionPane.showMessageDialog(bookingPanel, "No "+roomType+" rooms are"
+                                +" available.", "Not Available", JOptionPane.WARNING_MESSAGE);
+                        roomType=null;
+                    }
+                }
+            }
             if(e.getSource().equals(timePicker))
                 time=(String)timePicker.getSelectedItem();
         }
@@ -238,7 +258,8 @@ public class HotelBookingGUI extends JPanel
         enquiryButton.addActionListener(bListener);
         logoutButton=new JButton("Logout");
         logoutButton.addActionListener(bListener);
-        
+        acceptCust=new JButton("Accept");
+        acceptCust.addActionListener(bListener);
     }
     
     private void setupPanels()
@@ -299,8 +320,8 @@ public class HotelBookingGUI extends JPanel
         newCustPanel.setLayout(layout);
         layout.setAutoCreateGaps(true);
         layout.setAutoCreateContainerGaps(true);
-        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(name).addComponent(nameField).addComponent(acceptRoom)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(email).addComponent(newEmailField)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(phone).addComponent(phoneField)));
-        layout.setVerticalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(name).addComponent(email).addComponent(phone)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(nameField).addComponent(newEmailField).addComponent(phoneField)).addComponent(acceptRoom));
+        layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(name).addComponent(nameField).addComponent(acceptCust)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(email).addComponent(newEmailField)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING).addComponent(phone).addComponent(phoneField)));
+        layout.setVerticalGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(name).addComponent(email).addComponent(phone)).addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).addComponent(nameField).addComponent(newEmailField).addComponent(phoneField)).addComponent(acceptCust));
     }
     
     private void bookings()
@@ -319,9 +340,9 @@ public class HotelBookingGUI extends JPanel
     
     private void setupDatePanels()
     {
-        UtilDateModel model=new UtilDateModel();
-        UtilDateModel model2=new UtilDateModel();
-        UtilDateModel model3=new UtilDateModel();
+        SqlDateModel model=new SqlDateModel();
+        SqlDateModel model2=new SqlDateModel();
+        SqlDateModel model3=new SqlDateModel();
         Properties p=new Properties();
         p.put("text.today", "Today");
         p.put("text.month", "Month");
@@ -336,7 +357,8 @@ public class HotelBookingGUI extends JPanel
         roomBooking=new JPanel(new BorderLayout());
         occupants=new JTextField(2);
         roomPicker=new JComboBox(new String[] {"Single", "Double", "Suite"});
-        roomPicker.addActionListener(cbListener);
+        roomPicker.setSelectedIndex(-1);
+        roomPicker.addItemListener(cbListener);
         startPicker=new JDatePickerImpl(startPanel, new DateLabelFormatter());
         departPicker=new JDatePickerImpl(departPanel, new DateLabelFormatter());
         JPanel top=new JPanel();
@@ -359,7 +381,7 @@ public class HotelBookingGUI extends JPanel
         restBooking=new JPanel();
         String[] times=setupTimes(1100, 2300);
         timePicker=new JComboBox(times);
-        timePicker.addActionListener(cbListener);
+        timePicker.addItemListener(cbListener);
         datePicker=new JDatePickerImpl(datePanel, new DateLabelFormatter());
         restBooking.add(new JLabel("Date: "));
         restBooking.add(datePicker);
@@ -441,9 +463,7 @@ public class HotelBookingGUI extends JPanel
         else
             model=restListModel;
         for(Booking booking : bookings)
-        {
             model.addElement(booking);
-        }
     }
     
     private void logout()
@@ -463,21 +483,63 @@ public class HotelBookingGUI extends JPanel
     private void loadCustomer()
     {
         String email=emailField.getText();
-        emailField.setText("");
         boolean loaded=hotBook.loadCustomer(email);
         if(!loaded)
             JOptionPane.showMessageDialog(eCustPanel, "Email not found, please "
                     + "try again.", "Not Found", JOptionPane.WARNING_MESSAGE);
         else
         {
-            updateCentralPanel(welcomePanel);
-            buttonChanger(bookingButton, enquiryButton, logoutButton, exitButton);
-            cust=hotBook.currentCustomer.toString();
-            welcomeMessage.setText(cust);
-            bookings=hotBook.hotel.getRestBookList();
-            roomBookings=hotBook.hotel.getRoomBookList();
-            loadList(roomBookings, roomList);
-            loadList(bookings, restList);
+            login();
+            emailField.setText("");
+        }
+    }
+    
+    private void createCustomer()
+    {
+        String name=nameField.getText();
+        String email=newEmailField.getText();
+        String phone=phoneField.getText();
+        boolean created=hotBook.newCustomer(name, phone, email);
+        if(!created)
+            JOptionPane.showMessageDialog(newCustPanel, "Failed to create account. Please check "
+                    +"input and try again.", "Account not created", JOptionPane.WARNING_MESSAGE);
+        else
+        {
+            login();
+            nameField.setText("");
+            newEmailField.setText("");
+            phoneField.setText("");
+        }
+    }
+    
+    private void login()
+    {
+        updateCentralPanel(welcomePanel);
+        buttonChanger(bookingButton, enquiryButton, logoutButton, exitButton);
+        cust=hotBook.currentCustomer.toString();
+        welcomeMessage.setText(cust);
+        restBookings=hotBook.currentCustBookings("rest");
+        roomBookings=hotBook.currentCustBookings("room");
+        loadList(roomBookings, roomList);
+        loadList(restBookings, restList);
+    }
+    
+    private void createRoomBooking()
+    {
+        Date start=(Date)startPicker.getModel().getValue();
+        Date end=(Date)departPicker.getModel().getValue();
+        String occupantNo=occupants.getText();
+        boolean created=hotBook.createRoomBooking(start, end, roomType, occupantNo);
+        if(!created)
+            JOptionPane.showMessageDialog(welcomePanel, "Cannot create booking, please check "
+                    +"details and try again.", "Booking failed", JOptionPane.WARNING_MESSAGE);
+        else
+        {
+            login();
+            startPicker.getModel().setSelected(false);
+            departPicker.getModel().setSelected(false);
+            occupants.setText("");
+            roomPicker.setSelectedIndex(-1);
         }
     }
     

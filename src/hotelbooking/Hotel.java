@@ -18,13 +18,11 @@ import java.util.regex.Pattern;
  * @author Billy McCarthy-Dowd
  */
 public class Hotel {
-    private final Scanner scan;
     private final String name, location;
     private final int rating;
     private final Set<Room> roomList;
     private final Set<Customer> customerList;
-    private final Set<Booking> roomBookList;
-    private final Set<Booking> restBookList;
+    private final Set<Booking> roomBookList, restBookList;
     private Connection conn;
     
     public Hotel(String name, String location, int rating, Connection conn)
@@ -33,7 +31,6 @@ public class Hotel {
         this.customerList = new HashSet();
         this.roomList = new HashSet();
         this.restBookList= new HashSet();
-        this.scan = new Scanner(System.in);
         this.name=name;
         this.location=location;
         this.rating=rating;
@@ -44,7 +41,7 @@ public class Hotel {
     {
         PreparedStatement statement;
         int roomType=type;
-        int roomNo=0;
+        int roomNo;
         Room room=null;
         String rType="";
         if(roomList.isEmpty())
@@ -88,57 +85,26 @@ public class Hotel {
         return roomList;
     }
     
-    public Customer createCustomer()
+    public Customer createCustomer(String name, String phone, String email)
     {
         int accountNo=0;
-        String newPhone="";
-        String newEmail="";
-        boolean validEmail=false;
-        boolean validPhoneNumber=false;
-        
-        System.out.print("Please enter name: ");
-        String newName=scan.next();
-        
-        while (newEmail.equals(""))
-        {
-            System.out.print("Please enter email address: ");
-            newEmail=scan.next();
-            
-            validEmail = emailIsValid(newEmail);
-            
-            if (validEmail == false)
-            {
-                newEmail ="";
-                System.out.println("Not a valid email address, please try again.");
-            }
-        }
-        
-        while (newPhone.equals(""))
-        {
-            System.out.print("Please enter phone number: ");
-            newPhone=scan.next();
-            
-            validPhoneNumber = phoneNumberIsValid(newPhone);
-            
-            if (validPhoneNumber == false)
-            {
-                newPhone ="";
-                System.out.println("Not a valid phone number, please try again.");
-            }
-        }
-        long phone=Long.parseLong(newPhone);
-        
-        if(customerList.isEmpty()) // If no customers in the customer list hashset, next customer account number is 1
+        boolean validEmail=emailIsValid(email);
+        boolean validPhoneNumber=phoneNumberIsValid(phone);
+        if (validEmail==false||validPhoneNumber==false)
+            return null;
+
+        long phoneNo=Long.parseLong(phone);
+        if(customerList.isEmpty())
             accountNo=1;
         else
-            accountNo=customerList.size()+1; // If customers in the customer list hashset, next customer number is 1 more than last
-        Customer cust=new Customer(accountNo, newName, newEmail, phone); // Create a new customer based on information
-        int start=customerList.size(); // Check current size of customer list hashset and assign to start variable
-        customerList.add(cust); // Add customer to customer list hashset
-        int end=customerList.size(); // Check size of customer list hashset and assign to end variable
-        if(start==end) // If customer list hastset size has not changed, then no new customer //******
+            accountNo=customerList.size()+1;
+        Customer cust=new Customer(accountNo, name, email, phoneNo);
+        int start=customerList.size();
+        customerList.add(cust);
+        int end=customerList.size();
+        if(start==end)
             cust=null;
-        return cust; // Return cust variable
+        return cust;
     }
     
     public Set<Customer> getCustomerList() // Function allows access to private variable
