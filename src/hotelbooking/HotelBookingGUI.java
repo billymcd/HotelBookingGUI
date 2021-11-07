@@ -65,7 +65,6 @@ public class HotelBookingGUI extends JPanel
     private JDatePickerImpl datePicker, startPicker, departPicker;
     private BookingTableModel model;
     private JTable bookings;
-    private DefaultListModel roomListModel, restListModel;
     private String welcome, cust, roomType, time;
     private ButtonListener bListener;
     private List<Booking> restBookings, roomBookings;
@@ -417,8 +416,6 @@ public class HotelBookingGUI extends JPanel
         nameField.setText("");
         newEmailField.setText("");
         phoneField.setText("");
-        roomListModel.clear();
-        restListModel.clear();
     }
     //load a returning customer
     private void loadCustomer()
